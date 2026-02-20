@@ -60,11 +60,11 @@
     git clone https://github.com/USERNAME/car-repair-tracker.git
     cd car-repair-tracker
     ```
-2.  เปิดโปรเจกต์ด้วย Live Server (ผ่าน VS Code) หรือรันผ่าน Local web server เช่น Python:
+2.  เปิดโปรเจกต์ด้วย Live Server (ผ่าน VS Code) หรือรันผ่าน Local web server เช่น Node.js (`http-server`):
     ```bash
-    python3 -m http.server 8000
+    npx http-server
     ```
-    จากนั้นเข้าไปดูที่เบราว์เซอร์ `http://localhost:8000`
+    จากนั้นเข้าไปดูที่เบราว์เซอร์ `http://localhost:8080`
 
 ---
 
