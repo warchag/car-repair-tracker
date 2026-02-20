@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="แอพบันทึกการเข้าซ่อมรถ - ติดตามประวัติการซ่อมบำรุงรถยนต์อย่างครบถ้วน">
+    <title>CarCare Pro - บันทึกการซ่อมรถ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
+    <link rel="apple-touch-icon" href="icon.svg">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f1729">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- =================== AUTH LOGIN SCREEN =================== -->
+    <div class="auth-screen" id="authLoginScreen" style="display:none">
+        <div class="pin-container">
+            <div class="pin-logo">
+                <div class="logo-icon pin-logo-icon">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 13l2-4h10l2 4" />
+                        <rect x="3" y="13" width="18" height="5" rx="1" />
+                        <circle cx="7.5" cy="18" r="1.5" />
+                        <circle cx="16.5" cy="18" r="1.5" />
+                        <path d="M14 2l2.5 2.5M16.5 4.5L14.5 6.5M12 4l-1 3" />
+                    </svg>
+                </div>
+                <span class="logo-text">CarCare<span class="accent">Pro</span></span>
+            </div>
+            <p class="app-tagline">บันทึกทุกการซ่อม ไม่พลาดทุกนัดหมาย</p>
+            <h2 class="pin-title">เข้าสู่ระบบ</h2>
+            <p class="pin-subtitle">ลงชื่อเข้าใช้ด้วยบัญชี Google เพื่อ Sync ข้อมูลข้ามเครื่อง</p>
+            <button class="btn-google" id="btnGoogleLogin">
+                <svg width="20" height="20" viewBox="0 0 48 48">
+                    <path fill="#EA4335"
+                        d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                    <path fill="#4285F4"
+                        d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                    <path fill="#FBBC05"
+                        d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                    <path fill="#34A853"
+                        d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                </svg>
+                <span>เข้าสู่ระบบด้วย Google</span>
+            </button>
+            <p class="auth-note">ข้อมูลของคุณจะถูกเก็บบน Cloud อย่างปลอดภัย</p>
+            <p class="pin-error" id="authError"></p>
+        </div>
+    </div>
+    <!-- =================== PIN SETUP SCREEN =================== -->
+    <div class="pin-screen" id="pinSetupScreen" style="display:none">
+        <div class="pin-container">
+            <div class="pin-logo">
+                <div class="logo-icon pin-logo-icon">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 13l2-4h10l2 4" />
+                        <rect x="3" y="13" width="18" height="5" rx="1" />
+                        <circle cx="7.5" cy="18" r="1.5" />
+                        <circle cx="16.5" cy="18" r="1.5" />
+                        <path d="M14 2l2.5 2.5M16.5 4.5L14.5 6.5M12 4l-1 3" />
+                    </svg>
+                </div>
+                <span class="logo-text">CarCare<span class="accent">Pro</span></span>
+            </div>
+            <h2 class="pin-title" id="pinSetupTitle">ตั้งรหัส PIN</h2>
+            <p class="pin-subtitle" id="pinSetupSubtitle">กรุณาตั้งรหัส PIN 4 หลัก สำหรับเข้าใช้งานแอพ</p>
+            <div class="pin-dots" id="pinSetupDots">
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+            </div>
+            <div class="pin-pad" id="pinSetupPad">
+                <button class="pin-key" data-key="1">1</button>
+                <button class="pin-key" data-key="2">2</button>
+                <button class="pin-key" data-key="3">3</button>
+                <button class="pin-key" data-key="4">4</button>
+                <button class="pin-key" data-key="5">5</button>
+                <button class="pin-key" data-key="6">6</button>
+                <button class="pin-key" data-key="7">7</button>
+                <button class="pin-key" data-key="8">8</button>
+                <button class="pin-key" data-key="9">9</button>
+                <button class="pin-key pin-key-empty"></button>
+                <button class="pin-key" data-key="0">0</button>
+                <button class="pin-key pin-key-del" data-key="del">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
+                        <line x1="18" y1="9" x2="12" y2="15" />
+                        <line x1="12" y1="9" x2="18" y2="15" />
+                    </svg>
+                </button>
+            </div>
+            <p class="pin-error" id="pinSetupError"></p>
+        </div>
+    </div>
+
+    <!-- =================== PIN LOGIN SCREEN =================== -->
+    <div class="pin-screen" id="pinLoginScreen" style="display:none">
+        <div class="pin-container">
+            <div class="pin-logo">
+                <div class="logo-icon pin-logo-icon">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 13l2-4h10l2 4" />
+                        <rect x="3" y="13" width="18" height="5" rx="1" />
+                        <circle cx="7.5" cy="18" r="1.5" />
+                        <circle cx="16.5" cy="18" r="1.5" />
+                        <path d="M14 2l2.5 2.5M16.5 4.5L14.5 6.5M12 4l-1 3" />
+                    </svg>
+                </div>
+                <span class="logo-text">CarCare<span class="accent">Pro</span></span>
+            </div>
+            <div class="pin-lock-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+            </div>
+            <h2 class="pin-title">ใส่รหัส PIN</h2>
+            <p class="pin-subtitle">กรุณาใส่รหัส PIN 4 หลัก เพื่อเข้าใช้งาน</p>
+            <div class="pin-dots" id="pinLoginDots">
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+                <div class="pin-dot"></div>
+            </div>
+            <div class="pin-pad" id="pinLoginPad">
+                <button class="pin-key" data-key="1">1</button>
+                <button class="pin-key" data-key="2">2</button>
+                <button class="pin-key" data-key="3">3</button>
+                <button class="pin-key" data-key="4">4</button>
+                <button class="pin-key" data-key="5">5</button>
+                <button class="pin-key" data-key="6">6</button>
+                <button class="pin-key" data-key="7">7</button>
+                <button class="pin-key" data-key="8">8</button>
+                <button class="pin-key" data-key="9">9</button>
+                <button class="pin-key pin-key-empty"></button>
+                <button class="pin-key" data-key="0">0</button>
+                <button class="pin-key pin-key-del" data-key="del">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
+                        <line x1="18" y1="9" x2="12" y2="15" />
+                        <line x1="12" y1="9" x2="18" y2="15" />
+                    </svg>
+                </button>
+            </div>
+            <p class="pin-error" id="pinLoginError"></p>
+        </div>
+    </div>
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M5 13l2-4h10l2 4" />
+                        <rect x="3" y="13" width="18" height="5" rx="1" />
+                        <circle cx="7.5" cy="18" r="1.5" />
+                        <circle cx="16.5" cy="18" r="1.5" />
+                        <path d="M14 2l2.5 2.5M16.5 4.5L14.5 6.5M12 4l-1 3" />
+                    </svg>
+                </div>
+                <span class="logo-text">CarCare<span class="accent">Pro</span></span>
+            </div>
+        </div>
+        <ul class="nav-links">
+            <li class="nav-item active" data-page="dashboard">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1" />
+                    <rect x="14" y="3" width="7" height="7" rx="1" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" />
+                    <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+                <span>แดชบอร์ด</span>
+            </li>
+            <li class="nav-item" data-page="vehicles">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                    <path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                    <path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2" />
+                    <path d="M9 17h6" />
+                    <path d="M14 7l3 5" />
+                </svg>
+                <span>รถของฉัน</span>
+            </li>
+            <li class="nav-item" data-page="records">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                </svg>
+                <span>ประวัติซ่อม</span>
+            </li>
+            <li class="nav-item" data-page="analytics">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10" />
+                    <line x1="12" y1="20" x2="12" y2="4" />
+                    <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+                <span>สถิติค่าใช้จ่าย</span>
+            </li>
+        </ul>
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-actions">
+            <button class="theme-toggle" id="btnThemeToggle" title="สลับธีม">
+                <span class="icon-sun">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5" />
+                        <line x1="12" y1="1" x2="12" y2="3" />
+                        <line x1="12" y1="21" x2="12" y2="23" />
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                        <line x1="1" y1="12" x2="3" y2="12" />
+                        <line x1="21" y1="12" x2="23" y2="12" />
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                    </svg>
+                </span>
+                <span class="icon-moon">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                    </svg>
+                </span>
+                <span class="theme-label">เปลี่ยนเป็น Light Mode</span>
+            </button>
+            <button class="btn-export" id="btnExport" title="ส่งออกข้อมูล">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span>ส่งออก CSV</span>
+            </button>
+            <button class="btn-export" id="btnExportPDF" title="ส่งออก PDF">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                    <polyline points="10 9 9 9 8 9" />
+                </svg>
+                <span>ส่งออก PDF</span>
+            </button>
+            <button class="btn-export" id="btnSettings" title="ตั้งค่า">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3" />
+                    <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+                <span>ตั้งค่า PIN</span>
+            </button>
+            <button class="btn-export btn-logout" id="btnLogout" title="ออกจากระบบ">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                </svg>
+                <span>ออกจากระบบ</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Header -->
+    <header class="mobile-header">
+        <button class="hamburger" id="hamburger">
+            <span></span><span></span><span></span>
+        </button>
+        <div class="logo">
+            <span class="logo-text">CarCare<span class="accent">Pro</span></span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content" id="mainContent">
+        <!-- =================== DASHBOARD PAGE =================== -->
+        <section class="page active" id="page-dashboard">
+            <div class="page-header">
+                <div>
+                    <h1>แดชบอร์ด</h1>
+                    <p class="subtitle">ภาพรวมการซ่อมบำรุงรถยนต์</p>
+                </div>
+                <button class="btn btn-primary" id="btnQuickAdd">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    บันทึกการซ่อม
+                </button>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card" data-accent="blue">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                            <path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                            <path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2" />
+                            <path d="M9 17h6" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statVehicles">0</span>
+                        <span class="stat-label">จำนวนรถ</span>
+                    </div>
+                </div>
+                <div class="stat-card" data-accent="green">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path
+                                d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statRecords">0</span>
+                        <span class="stat-label">ครั้งที่ซ่อม</span>
+                    </div>
+                </div>
+                <div class="stat-card" data-accent="orange">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23" />
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statTotalCost">฿0</span>
+                        <span class="stat-label">ค่าใช้จ่ายทั้งหมด</span>
+                    </div>
+                </div>
+                <div class="stat-card" data-accent="purple">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                            <line x1="16" y1="2" x2="16" y2="6" />
+                            <line x1="8" y1="2" x2="8" y2="6" />
+                            <line x1="3" y1="10" x2="21" y2="10" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statUpcoming">0</span>
+                        <span class="stat-label">นัดหมายที่จะถึง</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Records & Upcoming -->
+            <div class="dashboard-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>ประวัติซ่อมล่าสุด</h2>
+                        <button class="btn-link" data-goto="records">ดูทั้งหมด →</button>
+                    </div>
+                    <div class="card-body" id="recentRecords">
+                        <div class="empty-state">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5" opacity="0.4">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                            <p>ยังไม่มีประวัติการซ่อม</p>
+                            <span>เริ่มบันทึกการซ่อมครั้งแรกของคุณ</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <h2>นัดหมายที่จะถึง</h2>
+                    </div>
+                    <div class="card-body" id="upcomingServices">
+                        <div class="empty-state">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5" opacity="0.4">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                                <line x1="16" y1="2" x2="16" y2="6" />
+                                <line x1="8" y1="2" x2="8" y2="6" />
+                                <line x1="3" y1="10" x2="21" y2="10" />
+                            </svg>
+                            <p>ไม่มีนัดหมาย</p>
+                            <span>ระบุวันนัดซ่อมครั้งถัดไปเมื่อบันทึก</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================== VEHICLES PAGE =================== -->
+        <section class="page" id="page-vehicles">
+            <div class="page-header">
+                <div>
+                    <h1>รถของฉัน</h1>
+                    <p class="subtitle">จัดการข้อมูลรถยนต์</p>
+                </div>
+                <button class="btn btn-primary" id="btnAddVehicle">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    เพิ่มรถ
+                </button>
+            </div>
+            <div class="vehicles-grid" id="vehiclesList">
+                <div class="empty-state-large">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"
+                        opacity="0.3">
+                        <path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                        <path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                        <path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2" />
+                        <path d="M9 17h6" />
+                        <path d="M14 7l3 5" />
+                    </svg>
+                    <h3>ยังไม่มีข้อมูลรถยนต์</h3>
+                    <p>เพิ่มรถคันแรกของคุณเพื่อเริ่มบันทึกการซ่อม</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================== RECORDS PAGE =================== -->
+        <section class="page" id="page-records">
+            <div class="page-header">
+                <div>
+                    <h1>ประวัติซ่อม</h1>
+                    <p class="subtitle">รายการบันทึกการซ่อมทั้งหมด</p>
+                </div>
+                <button class="btn btn-primary" id="btnAddRecord">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    บันทึกการซ่อม
+                </button>
+            </div>
+            <!-- Filters -->
+            <div class="filters-bar">
+                <div class="search-box">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input type="text" id="searchRecords" placeholder="ค้นหาชื่อร้าน, รายละเอียด...">
+                </div>
+                <select id="filterVehicle" class="filter-select">
+                    <option value="">รถทุกคัน</option>
+                </select>
+                <select id="filterType" class="filter-select">
+                    <option value="">ประเภทซ่อมทั้งหมด</option>
+                    <option value="engine">🔧 เครื่องยนต์</option>
+                    <option value="brake">🛑 เบรก</option>
+                    <option value="tire">🔘 ยาง</option>
+                    <option value="oil">🛢️ เปลี่ยนถ่ายน้ำมัน</option>
+                    <option value="battery">🔋 แบตเตอรี่</option>
+                    <option value="ac">❄️ แอร์</option>
+                    <option value="body">🚗 ตัวถัง/สี</option>
+                    <option value="electric">⚡ ระบบไฟฟ้า</option>
+                    <option value="suspension">🔩 ช่วงล่าง</option>
+                    <option value="transmission">⚙️ เกียร์/ส่งกำลัง</option>
+                    <option value="maintenance">📋 ตรวจเช็คประจำ</option>
+                    <option value="other">📌 อื่นๆ</option>
+                </select>
+                <select id="filterStatus" class="filter-select">
+                    <option value="">สถานะทั้งหมด</option>
+                    <option value="completed">✅ เสร็จสิ้น</option>
+                    <option value="inprogress">🔄 กำลังซ่อม</option>
+                    <option value="scheduled">📅 นัดหมาย</option>
+                </select>
+            </div>
+            <div class="records-list" id="recordsList">
+                <div class="empty-state-large">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"
+                        opacity="0.3">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                    <h3>ยังไม่มีบันทึกการซ่อม</h3>
+                    <p>เพิ่มบันทึกการซ่อมครั้งแรกของคุณ</p>
+                </div>
+            </div>
+        </section>
+
+
+        <!-- =================== ANALYTICS PAGE =================== -->
+        <section class="page" id="page-analytics">
+            <div class="page-header">
+                <div>
+                    <h1>สถิติค่าใช้จ่าย</h1>
+                    <p class="subtitle">วิเคราะห์ค่าใช้จ่ายในการซ่อมบำรุง</p>
+                </div>
+            </div>
+            <div class="analytics-grid">
+                <div class="card analytics-card">
+                    <div class="card-header">
+                        <h2>ค่าใช้จ่ายรายเดือน</h2>
+                        <select id="analyticsYear" class="filter-select filter-small"></select>
+                    </div>
+                    <div class="card-body chart-container">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+                <div class="card analytics-card">
+                    <div class="card-header">
+                        <h2>สัดส่วนตามประเภทซ่อม</h2>
+                    </div>
+                    <div class="card-body chart-container">
+                        <canvas id="typeChart"></canvas>
+                    </div>
+                </div>
+                <div class="card analytics-card full-width">
+                    <div class="card-header">
+                        <h2>ค่าใช้จ่ายตามรถ</h2>
+                    </div>
+                    <div class="card-body chart-container">
+                        <canvas id="vehicleChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- =================== MODALS =================== -->
+
+    <!-- Vehicle Modal -->
+    <div class="modal-overlay" id="vehicleModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="vehicleModalTitle">เพิ่มรถใหม่</h2>
+                <button class="modal-close" data-close="vehicleModal">&times;</button>
+            </div>
+            <form id="vehicleForm" class="modal-body">
+                <input type="hidden" id="vehicleId">
+                <!-- Vehicle Profile Image Upload -->
+                <div class="form-group">
+                    <label>รูปโปรไฟล์รถ</label>
+                    <div class="vehicle-image-upload" id="vehicleImageUpload">
+                        <input type="file" id="vehicleImageInput" accept="image/*" hidden>
+                        <div class="image-preview" id="vehicleImagePreview">
+                            <svg class="placeholder-icon" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                                <path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                                <path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2" />
+                                <path d="M9 17h6" />
+                                <path d="M14 7l3 5" />
+                            </svg>
+                            <img id="vehicleImageTag" src="" alt="" style="display:none">
+                        </div>
+                        <div class="image-upload-text">
+                            <span class="upload-main">คลิกเพื่ออัปโหลดรูปรถ</span>
+                            <span class="upload-hint">รองรับ JPG, PNG, WebP (สูงสุด 2MB)</span>
+                        </div>
+                        <button type="button" class="btn-icon btn-remove-image" id="btnRemoveImage" title="ลบรูป"
+                            style="display:none">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="vehicleBrand">ยี่ห้อ <span class="required">*</span></label>
+                        <input type="text" id="vehicleBrand" placeholder="เช่น Toyota, Honda" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicleModel">รุ่น <span class="required">*</span></label>
+                        <input type="text" id="vehicleModel" placeholder="เช่น Camry, Civic" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="vehicleYear">ปี ค.ศ.</label>
+                        <input type="number" id="vehicleYear" placeholder="เช่น 2023" min="1950" max="2030">
+                    </div>
+                    <div class="form-group">
+                        <label for="vehiclePlate">ทะเบียนรถ <span class="required">*</span></label>
+                        <input type="text" id="vehiclePlate" placeholder="เช่น กก 1234" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="vehicleColor">สี</label>
+                        <input type="text" id="vehicleColor" placeholder="เช่น ขาว, ดำ, เงิน">
+                    </div>
+                    <div class="form-group">
+                        <label for="vehicleMileage">เลขไมล์ปัจจุบัน (กม.)</label>
+                        <input type="number" id="vehicleMileage" placeholder="เช่น 50000" min="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="vehicleNotes">หมายเหตุ</label>
+                    <textarea id="vehicleNotes" rows="2" placeholder="รายละเอียดเพิ่มเติม..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" data-close="vehicleModal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Record Modal -->
+    <div class="modal-overlay" id="recordModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2 id="recordModalTitle">บันทึกการซ่อม</h2>
+                <button class="modal-close" data-close="recordModal">&times;</button>
+            </div>
+            <form id="recordForm" class="modal-body">
+                <input type="hidden" id="recordId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="recordVehicle">เลือกรถ <span class="required">*</span></label>
+                        <select id="recordVehicle" required>
+                            <option value="">-- เลือกรถ --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="recordDate">วันที่ซ่อม <span class="required">*</span></label>
+                        <input type="date" id="recordDate" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="recordType">ประเภทการซ่อม <span class="required">*</span></label>
+                        <select id="recordType" required>
+                            <option value="">-- เลือกประเภท --</option>
+                            <option value="engine">🔧 เครื่องยนต์</option>
+                            <option value="brake">🛑 เบรก</option>
+                            <option value="tire">🔘 ยาง</option>
+                            <option value="oil">🛢️ เปลี่ยนถ่ายน้ำมัน</option>
+                            <option value="battery">🔋 แบตเตอรี่</option>
+                            <option value="ac">❄️ แอร์</option>
+                            <option value="body">🚗 ตัวถัง/สี</option>
+                            <option value="electric">⚡ ระบบไฟฟ้า</option>
+                            <option value="suspension">🔩 ช่วงล่าง</option>
+                            <option value="transmission">⚙️ เกียร์/ส่งกำลัง</option>
+                            <option value="maintenance">📋 ตรวจเช็คประจำ</option>
+                            <option value="other">📌 อื่นๆ</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="recordStatus">สถานะ</label>
+                        <select id="recordStatus">
+                            <option value="completed">✅ เสร็จสิ้น</option>
+                            <option value="inprogress">🔄 กำลังซ่อม</option>
+                            <option value="scheduled">📅 นัดหมาย</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="recordShop">ชื่อร้าน/อู่ซ่อม <span class="required">*</span></label>
+                    <input type="text" id="recordShop" placeholder="เช่น อู่ช่างสมชาย" required>
+                </div>
+                <div class="form-group">
+                    <label for="recordDescription">รายละเอียดการซ่อม <span class="required">*</span></label>
+                    <textarea id="recordDescription" rows="3"
+                        placeholder="อธิบายรายละเอียดการซ่อม เช่น เปลี่ยนผ้าเบรคหน้า-หลัง, เจียร์จานเบรค..."
+                        required></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="recordMileage">เลขไมล์ตอนซ่อม (กม.)</label>
+                        <input type="number" id="recordMileage" placeholder="เช่น 52000" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="recordCost">ค่าใช้จ่าย (บาท) <span class="required">*</span></label>
+                        <input type="number" id="recordCost" placeholder="เช่น 3500" min="0" step="0.01" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="recordNextDate">วันนัดซ่อมครั้งถัดไป</label>
+                        <input type="date" id="recordNextDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="recordNextMileage">ไมล์ครั้งถัดไป (กม.)</label>
+                        <input type="number" id="recordNextMileage" placeholder="เช่น 62000" min="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="recordNotes">หมายเหตุ</label>
+                    <textarea id="recordNotes" rows="2" placeholder="หมายเหตุเพิ่มเติม..."></textarea>
+                </div>
+                <!-- Record Images Upload -->
+                <div class="form-group">
+                    <label>รูปภาพ <span class="upload-hint-inline">(สูงสุด 5 รูป)</span></label>
+                    <input type="file" id="recordImageInput" accept="image/*" multiple hidden>
+                    <div class="record-image-upload" id="recordImageDropZone">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                            <circle cx="8.5" cy="8.5" r="1.5" />
+                            <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                        <div class="image-upload-text">
+                            <span class="upload-main">คลิกหรือลากรูปภาพมาวางที่นี่</span>
+                            <span class="upload-hint">รองรับ JPG, PNG, WebP (สูงสุด 5 รูป)</span>
+                        </div>
+                    </div>
+                    <div class="record-images-grid" id="recordImagesGrid"></div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" data-close="recordModal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h2>ยืนยันการลบ</h2>
+                <button class="modal-close" data-close="deleteModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteMessage" class="delete-msg">คุณต้องการลบรายการนี้หรือไม่?</p>
+                <div class="delete-pin-section">
+                    <label class="pin-confirm-label">กรอกรหัส PIN 4 หลักเพื่อยืนยัน</label>
+                    <div class="pin-confirm-inputs">
+                        <input type="password" maxlength="1" class="pin-confirm-digit" data-idx="0" inputmode="numeric"
+                            pattern="[0-9]">
+                        <input type="password" maxlength="1" class="pin-confirm-digit" data-idx="1" inputmode="numeric"
+                            pattern="[0-9]">
+                        <input type="password" maxlength="1" class="pin-confirm-digit" data-idx="2" inputmode="numeric"
+                            pattern="[0-9]">
+                        <input type="password" maxlength="1" class="pin-confirm-digit" data-idx="3" inputmode="numeric"
+                            pattern="[0-9]">
+                    </div>
+                    <p class="pin-confirm-error" id="deletePinError"></p>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-ghost" data-close="deleteModal">ยกเลิก</button>
+                    <button class="btn btn-danger" id="btnConfirmDelete">ยืนยันลบ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings/Change PIN Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h2>เปลี่ยนรหัส PIN</h2>
+                <button class="modal-close" data-close="settingsModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="currentPin">รหัส PIN ปัจจุบัน</label>
+                    <div class="pin-confirm-inputs">
+                        <input type="password" maxlength="1" class="pin-confirm-digit settings-cur" data-idx="0"
+                            inputmode="numeric" pattern="[0-9]">
+                        <input type="password" maxlength="1" class="pin-confirm-digit settings-cur" data-idx="1"
+                            inputmode="numeric" pattern="[0-9]">
+                        <input type="password" maxlength="1" class="pin-confirm-digit settings-cur" data-idx="2"
+                            inputmode="numeric" pattern="[0-9]">
+                        <input type="password" maxlength="1" class="pin-confirm-digit settings-cur" data-idx="3"
+                            inputmode="numeric" pattern="[0-9]">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="newPin">รหัส PIN ใหม่</label>
+                    <div class="pin-confirm-inputs">
+                        <input type="password" maxlength="1" class="pin-confirm-digit settings-new" data-idx="0"
+                            inputmode="numeric" pattern="[0-9]">
+                        <input type="password" maxlength="1" class="pin-confirm-digit settings-new" data-idx="1"
+                            inputmode="numeric" pattern="[0-9]">
+                        <input type="password" maxlength="1" class="pin-confirm-digit settings-new" data-idx="2"
+                            inputmode="numeric" pattern="[0-9]">
+                        <input type="password" maxlength="1" class="pin-confirm-digit settings-new" data-idx="3"
+                            inputmode="numeric" pattern="[0-9]">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="confirmNewPin">ยืนยันรหัส PIN ใหม่</label>
+                    <div class="pin-confirm-inputs">
+                        <input type="password" maxlength="1" class="pin-confirm-digit settings-confirm" data-idx="0"
+                            inputmode="numeric" pattern="[0-9]">
+                        <input type="password" maxlength="1" class="pin-confirm-digit settings-confirm" data-idx="1"
+                            inputmode="numeric" pattern="[0-9]">
+                        <input type="password" maxlength="1" class="pin-confirm-digit settings-confirm" data-idx="2"
+                            inputmode="numeric" pattern="[0-9]">
+                        <input type="password" maxlength="1" class="pin-confirm-digit settings-confirm" data-idx="3"
+                            inputmode="numeric" pattern="[0-9]">
+                    </div>
+                </div>
+                <p class="pin-confirm-error" id="settingsPinError"></p>
+                <div class="modal-actions">
+                    <button class="btn btn-ghost" data-close="settingsModal">ยกเลิก</button>
+                    <button class="btn btn-primary" id="btnSavePin">บันทึก PIN ใหม่</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Lightbox -->
+    <div class="lightbox-overlay" id="lightboxOverlay">
+        <button class="lightbox-close" id="lightboxClose">&times;</button>
+        <button class="lightbox-nav lightbox-prev" id="lightboxPrev">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="15 18 9 12 15 6" />
+            </svg>
+        </button>
+        <img id="lightboxImg" src="" alt="รูปภาพ">
+        <button class="lightbox-nav lightbox-next" id="lightboxNext">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6" />
+            </svg>
+        </button>
+        <div class="lightbox-counter" id="lightboxCounter"></div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(() => console.log('SW registered'))
+                .catch((err) => console.log('SW registration failed:', err));
+        }
+    </script>
+</body>
+
+</html>

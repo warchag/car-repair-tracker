@@ -1,0 +1,24 @@
+{
+    "name": "CarCare Pro - บันทึกการซ่อมรถ",
+    "short_name": "CarCare Pro",
+    "description": "บันทึกทุกการซ่อม ไม่พลาดทุกนัดหมาย",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0f1729",
+    "theme_color": "#0f1729",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "utilities",
+        "lifestyle"
+    ],
+    "lang": "th",
+    "dir": "ltr"
+}
