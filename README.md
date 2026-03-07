@@ -11,15 +11,9 @@
 
 ---
 
-## 🚀 ทดลองใช้งาน (Live Demo)
+## 🚀 ใช้งานจริงได้ที่
 คุณสามารถเข้าใช้งานเว็บแอปพลิเคชันเวอร์ชันล่าสุดได้ทันทีที่ลิงก์นี้:
 👉 **[https://carcarepro-9fe9c.web.app/](https://carcarepro-9fe9c.web.app/)**
-
-หรือสามารถใช้มือถือสแกน **QR Code** ด้านล่างนี้เพื่อเปิดเข้าแอปอย่างรวดเร็ว:
-
-<div align="center">
-  <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://carcarepro-9fe9c.web.app/" alt="QR Code for CarCare Pro" width="200" style="border-radius: 12px; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-</div>
 
 ---
 
@@ -86,7 +80,10 @@
 **☕ สนับสนุนช่างเทคนิค:**
 หากอยากสนับสนุนค่าน้ำ ค่าไฟ และค่า Server คุณสามารถเลี้ยงกาแฟผมได้ที่
 > **พร้อมเพย์ (PromptPay):** `095-920-1930` (นายวรจักร คงหนู)
-> หรือแสกน QR Code สนับสนุนได้จากเมนู "เกี่ยวกับเรา" ในแอปโดยตรง
+
+<div align="center">
+  <img src="https://promptpay.io/0959201930.png" alt="PromptPay QR Code" width="200" style="border-radius: 12px; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 10px;">
+</div>
 
 ---
 *© 2026 CarCare Pro. All rights reserved.*
