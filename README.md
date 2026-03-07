@@ -11,6 +11,18 @@
 
 ---
 
+## 🚀 ทดลองใช้งาน (Live Demo)
+คุณสามารถเข้าใช้งานเว็บแอปพลิเคชันเวอร์ชันล่าสุดได้ทันทีที่ลิงก์นี้:
+👉 **[https://carcarepro-9fe9c.web.app/](https://carcarepro-9fe9c.web.app/)**
+
+หรือสามารถใช้มือถือสแกน **QR Code** ด้านล่างนี้เพื่อเปิดเข้าแอปอย่างรวดเร็ว:
+
+<div align="center">
+  <img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://carcarepro-9fe9c.web.app/" alt="QR Code for CarCare Pro" width="200" style="border-radius: 12px; border: 4px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+</div>
+
+---
+
 ## 🌟 เกี่ยวกับโปรเจกต์ (About)
 **CarCare Pro** คือเว็บแอปพลิเคชัน (PWA) ที่ออกแบบมาเพื่อช่วยคุณบันทึกและจัดการค่าใช้จ่ายเกี่ยวกับรถยนต์ทั้งหมดแบบครบวงจร รองรับตั้งแต่รถยนต์คันเก่ง รถกระบะ มอเตอร์ไซค์ ไปจนถึง **ยานยนต์ไฟฟ้า (EV)** ด้วยระบบ Cloud (Firebase) ข้อมูลของคุณจะปลอดภัยและสามารถเข้าถึงได้ทุกที่ทุกเวลา
 
