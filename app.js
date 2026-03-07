@@ -940,58 +940,107 @@ function updateVehicleSelects() {
 function renderDashboard() {
     const vehicles = DB.getVehicles();
     const records = DB.getRecords();
+    const fuelLogs = DB.getFuelLogs();
+    const chargeLogs = DB.getChargeLogs();
 
-    // Stats
+    // --- Stats ---
     document.getElementById('statVehicles').textContent = vehicles.length;
-    document.getElementById('statRecords').textContent = records.length;
 
-    const totalCost = records.reduce((sum, r) => sum + (r.cost || 0), 0);
-    document.getElementById('statTotalCost').textContent = formatCurrency(totalCost);
+    const totalRepairCost = records.reduce((sum, r) => sum + (r.cost || 0), 0);
+    const totalFuelCost = fuelLogs.reduce((sum, f) => sum + (f.totalCost || 0), 0);
+    const totalChargeCost = chargeLogs.reduce((sum, c) => sum + (c.totalCost || 0), 0);
+
+    document.getElementById('statRepairCost').textContent = formatCurrency(totalRepairCost);
+    document.getElementById('statFuelCostAll').textContent = formatCurrency(totalFuelCost);
+    document.getElementById('statChargeCostAll').textContent = formatCurrency(totalChargeCost);
 
     // Upcoming
     const upcomingRecords = records
         .filter(r => r.nextDate && daysUntil(r.nextDate) !== null)
         .sort((a, b) => new Date(a.nextDate) - new Date(b.nextDate));
 
-    const upcomingCount = upcomingRecords.filter(r => daysUntil(r.nextDate) >= 0).length;
-    document.getElementById('statUpcoming').textContent = upcomingCount;
 
-    // Recent Records
+    // --- Unified Activity Feed ---
     const recentContainer = document.getElementById('recentRecords');
-    const sortedRecords = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
-    const recent = sortedRecords.slice(0, 5);
+    const activities = [];
 
-    if (recent.length === 0) {
+    // Add repairs
+    records.forEach(r => {
+        const typeInfo = REPAIR_TYPES[r.type] || REPAIR_TYPES.other;
+        const statusInfo = (typeof STATUS_MAP !== 'undefined' && STATUS_MAP[r.status]) || { label: 'เสร็จสิ้น', class: 'status-completed' };
+        activities.push({
+            date: r.date,
+            type: 'repair',
+            emoji: typeInfo.emoji,
+            title: typeInfo.label,
+            badge: `<span class="status-badge ${statusInfo.class}">${statusInfo.label}</span>`,
+            meta: `🚗 ${getVehicleShort(r.vehicleId)} · 🏪 ${r.shop || '-'}`,
+            cost: r.cost || 0,
+            accentColor: '#ef4444'
+        });
+    });
+
+    // Add fuel logs
+    fuelLogs.forEach(f => {
+        const fuelInfo = (typeof FUEL_TYPES !== 'undefined' && FUEL_TYPES[f.fuelType]) || { emoji: '⛽', label: f.fuelType || 'น้ำมัน' };
+        activities.push({
+            date: f.date,
+            type: 'fuel',
+            emoji: fuelInfo.emoji,
+            title: `เติม${fuelInfo.label}`,
+            badge: '<span class="activity-type-badge fuel">เติมน้ำมัน</span>',
+            meta: `🚗 ${getVehicleShort(f.vehicleId)} · ${f.liters ? f.liters + ' ลิตร' : ''} ${f.station ? '· ⛽ ' + f.station : ''}`,
+            cost: f.totalCost || 0,
+            accentColor: '#f59e0b'
+        });
+    });
+
+    // Add charge logs
+    chargeLogs.forEach(c => {
+        const chargeInfo = (typeof CHARGE_TYPES !== 'undefined' && CHARGE_TYPES[c.chargeType]) || { emoji: '⚡', label: c.chargeType || 'ชาร์จ' };
+        activities.push({
+            date: c.date,
+            type: 'charge',
+            emoji: chargeInfo.emoji || '⚡',
+            title: `ชาร์จ ${chargeInfo.label || 'EV'}`,
+            badge: '<span class="activity-type-badge charge">ชาร์จไฟ</span>',
+            meta: `🚗 ${getVehicleShort(c.vehicleId)} · ${c.kwh ? c.kwh + ' kWh' : ''} ${c.provider ? '· 🔌 ' + c.provider : ''}`,
+            cost: c.totalCost || 0,
+            accentColor: '#3b82f6'
+        });
+    });
+
+    // Sort by date descending and take top 8
+    activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const recentActivities = activities.slice(0, 8);
+
+    if (recentActivities.length === 0) {
         recentContainer.innerHTML = `
             <div class="empty-state">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                <p>ยังไม่มีประวัติการซ่อม</p>
-                <span>เริ่มบันทึกการซ่อมครั้งแรกของคุณ</span>
+                <p>ยังไม่มีกิจกรรม</p>
+                <span>เริ่มบันทึกการซ่อม เติมน้ำมัน หรือชาร์จไฟ</span>
             </div>`;
     } else {
-        recentContainer.innerHTML = recent.map(r => {
-            const typeInfo = REPAIR_TYPES[r.type] || REPAIR_TYPES.other;
-            const statusInfo = STATUS_MAP[r.status] || STATUS_MAP.completed;
-            return `
-                <div class="record-item">
-                    <div class="record-type-icon">${typeInfo.emoji}</div>
-                    <div class="record-info">
-                        <div class="title">
-                            ${typeInfo.label}
-                            <span class="status-badge ${statusInfo.class}">${statusInfo.label}</span>
-                        </div>
-                        <div class="meta">
-                            <span>📅 ${formatDate(r.date)}</span>
-                            <span>🚗 ${getVehicleShort(r.vehicleId)}</span>
-                            <span>🏪 ${r.shop || '-'}</span>
-                        </div>
+        recentContainer.innerHTML = recentActivities.map(a => `
+            <div class="record-item activity-item">
+                <div class="activity-accent" style="background:${a.accentColor}"></div>
+                <div class="record-type-icon">${a.emoji}</div>
+                <div class="record-info">
+                    <div class="title">
+                        ${a.title}
+                        ${a.badge}
                     </div>
-                    <div class="record-cost">${formatCurrency(r.cost)}</div>
-                </div>`;
-        }).join('');
+                    <div class="meta">
+                        <span>📅 ${formatDate(a.date)}</span>
+                        <span>${a.meta}</span>
+                    </div>
+                </div>
+                <div class="record-cost">${formatCurrency(a.cost)}</div>
+            </div>`).join('');
     }
 
-    // Upcoming Services
+    // --- Upcoming Services (unchanged logic) ---
     const upcomingContainer = document.getElementById('upcomingServices');
     const upcomingDisplay = upcomingRecords.slice(0, 5);
 
@@ -1026,6 +1075,7 @@ function renderDashboard() {
         }).join('');
     }
 }
+
 
 // Vehicles
 function renderVehicles() {

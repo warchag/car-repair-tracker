@@ -290,7 +290,7 @@
             <div class="page-header">
                 <div>
                     <h1>แดชบอร์ด</h1>
-                    <p class="subtitle">ภาพรวมการซ่อมบำรุงรถยนต์</p>
+                    <p class="subtitle">ภาพรวมค่าใช้จ่ายรถยนต์ทั้งหมด</p>
                 </div>
                 <button class="btn btn-primary" id="btnQuickAdd">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -303,7 +303,7 @@
 
             <!-- Stats Cards -->
             <div class="stats-grid">
-                <div class="stat-card" data-accent="blue">
+                <div class="stat-card" data-accent="blue" data-goto="vehicles">
                     <div class="stat-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
@@ -318,7 +318,7 @@
                         <span class="stat-label">จำนวนรถ</span>
                     </div>
                 </div>
-                <div class="stat-card" data-accent="green">
+                <div class="stat-card" data-accent="orange" data-goto="records">
                     <div class="stat-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
@@ -327,45 +327,44 @@
                         </svg>
                     </div>
                     <div class="stat-info">
-                        <span class="stat-value" id="statRecords">0</span>
-                        <span class="stat-label">ครั้งที่ซ่อม</span>
+                        <span class="stat-value" id="statRepairCost">฿0</span>
+                        <span class="stat-label">ค่าซ่อมรวม</span>
                     </div>
                 </div>
-                <div class="stat-card" data-accent="orange">
+                <div class="stat-card" data-accent="green" data-goto="fuel">
                     <div class="stat-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
-                            <line x1="12" y1="1" x2="12" y2="23" />
-                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                            <path d="M3 22V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16" />
+                            <path d="M3 22h10" />
+                            <path
+                                d="M13 10h2a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 6" />
                         </svg>
                     </div>
                     <div class="stat-info">
-                        <span class="stat-value" id="statTotalCost">฿0</span>
-                        <span class="stat-label">ค่าใช้จ่ายทั้งหมด</span>
+                        <span class="stat-value" id="statFuelCostAll">฿0</span>
+                        <span class="stat-label">ค่าน้ำมันรวม</span>
                     </div>
                 </div>
-                <div class="stat-card" data-accent="purple">
+                <div class="stat-card" data-accent="purple" data-goto="charge">
                     <div class="stat-icon">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                             stroke-width="2">
-                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                            <line x1="16" y1="2" x2="16" y2="6" />
-                            <line x1="8" y1="2" x2="8" y2="6" />
-                            <line x1="3" y1="10" x2="21" y2="10" />
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
                         </svg>
                     </div>
                     <div class="stat-info">
-                        <span class="stat-value" id="statUpcoming">0</span>
-                        <span class="stat-label">นัดหมายที่จะถึง</span>
+                        <span class="stat-value" id="statChargeCostAll">฿0</span>
+                        <span class="stat-label">ค่าชาร์จรวม</span>
                     </div>
                 </div>
             </div>
 
-            <!-- Recent Records & Upcoming -->
+            <!-- Activity Feed & Upcoming -->
             <div class="dashboard-grid">
                 <div class="card">
                     <div class="card-header">
-                        <h2 id="recentRecordsHeader">ประวัติการซ่อมล่าสุด</h2>
+                        <h2 id="recentRecordsHeader">🕐 กิจกรรมล่าสุด</h2>
                     </div>
                     <div class="card-body" id="recentRecords">
                         <div class="empty-state">
@@ -374,14 +373,14 @@
                                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                                 <polyline points="14 2 14 8 20 8" />
                             </svg>
-                            <p>ยังไม่มีประวัติการซ่อม</p>
-                            <span>เริ่มบันทึกการซ่อมครั้งแรกของคุณ</span>
+                            <p>ยังไม่มีกิจกรรม</p>
+                            <span>เริ่มบันทึกการซ่อม เติมน้ำมัน หรือชาร์จไฟ</span>
                         </div>
                     </div>
                 </div>
                 <div class="card">
                     <div class="card-header">
-                        <h2>นัดหมายที่จะถึง</h2>
+                        <h2>📅 นัดหมายที่จะถึง</h2>
                     </div>
                     <div class="card-body" id="upcomingServices">
                         <div class="empty-state">
