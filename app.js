@@ -133,6 +133,7 @@ const DB = {
                 if (snap.exists && snap.metadata.hasPendingWrites === false) {
                     this._chargeLogs = snap.data().items || [];
                     if (typeof renderChargeLogs === 'function') renderChargeLogs();
+                    if (typeof renderDashboard === 'function') renderDashboard();
                 }
             });
     },
