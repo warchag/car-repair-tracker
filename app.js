@@ -3253,6 +3253,16 @@ function initAuth() {
     fireAuth.onAuthStateChanged(user => {
         if (user) {
             DB._userId = user.uid;
+
+            // Set User Profile UI
+            const profileEl = document.getElementById('userProfile');
+            if (profileEl) {
+                profileEl.style.display = 'flex';
+                document.getElementById('userProfilePic').src = user.photoURL || 'icon.svg';
+                document.getElementById('userProfileName').textContent = user.displayName || 'ผู้ใช้งาน';
+                document.getElementById('userProfileEmail').textContent = user.email || '';
+            }
+
             DB.migrateLocalData().then(() => {
                 DB.loadFromCloud().then(() => {
                     DB.startRealtimeSync();
@@ -3262,8 +3272,13 @@ function initAuth() {
             });
         } else {
             DB._userId = null;
+
+            // Hide User Profile UI
+            const profileEl = document.getElementById('userProfile');
+            if (profileEl) profileEl.style.display = 'none';
+
             DB.stopRealtimeSync();
-            initPinSystem();
+            showAuthLogin();
         }
     });
 }

@@ -174,6 +174,18 @@
                 </div>
                 <span class="logo-text">CarCare<span class="accent">Pro</span></span>
             </div>
+            <!-- User Profile (Hidden by default, shown when logged in) -->
+            <div class="user-profile" id="userProfile"
+                style="display:none; align-items:center; gap:12px; margin-top: 24px; padding: 0 4px;">
+                <img id="userProfilePic" src="" alt="Profile" referrerpolicy="no-referrer"
+                    style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color); flex-shrink: 0;">
+                <div style="display:flex; flex-direction:column; overflow:hidden;">
+                    <span id="userProfileName"
+                        style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
+                    <span id="userProfileEmail"
+                        style="font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></span>
+                </div>
+            </div>
         </div>
         <ul class="nav-links">
             <li class="nav-item active" data-page="dashboard">
