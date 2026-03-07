@@ -56,6 +56,31 @@
 - มีระบบเซฟความปลอดภัย 2 ชั้นด้วยตั้งค่า PIN Mode ส่วนตัว ป้องกันคนแอบดูข้อมูล
 - ใช้งานระบบ Cloud Firestore ทำงานได้ลื่นไหลซิงค์ข้อมูลตรงทุกหน้าจอ
 
+
+---
+
+## 🛠️ วิธีนำโปรเจกต์ไปใช้งาน (How to Clone & Run)
+
+หากคุณต้องการนำซอร์สโค้ดนี้ไปพัฒนาต่อหรือรันบนเครื่องคอมพิวเตอร์ของคุณเอง สามารถทำได้ตามขั้นตอนดังนี้:
+
+### 1. การโคลนโปรเจกต์ (Clone Source Code)
+เปิด Terminal หรือ Command Prompt แล้วใช้คำสั่ง:
+```bash
+git clone https://github.com/warchag/car-repair-tracker.git
+cd car-repair-tracker
+```
+
+### 2. การเปิดใช้งาน (Running Locally)
+เนื่องจากโปรเจกต์นี้ถูกพัฒนาด้วย HTML, CSS และ Vanilla JavaScript คุณสามารถรันได้ง่ายๆ ดังนี้:
+- **วิธีที่ 1 (ง่ายที่สุด):** ดับเบิลคลิกไฟล์ `index.html` เพื่อเปิดผ่าน Browser ได้ทันที
+- **วิธีที่ 2 (แนะนำ):** ใช้ Extension **"Live Server"** ใน VS Code หรือรันผ่าน Local Server อื่นๆ (เช่น `python -m http.server`) เพื่อให้ฟีเจอร์บางอย่างทำงานได้อย่างสมบูรณ์
+
+### 3. การตั้งค่า Firebase (Configuration)
+โปรเจกต์นี้เชื่อมต่อกับ Firebase สำหรับระบบสมาชิกและฐานข้อมูล หากคุณต้องการใช้ฐานข้อมูลส่วนตัว:
+1. สร้างโปรเจกต์ใหม่ที่ [Firebase Console](https://console.firebase.google.com/)
+2. เปิดใช้งาน **Authentication (Google)** และ **Firestore Database**
+3. คัดลอก `firebaseConfig` จากหน้า Settings มาใส่ในไฟล์ [app.js](file:///Users/worracag/Desktop/Work/car-repair-tracker/app.js) (บรรทัดที่ 8)
+
 ---
 
 ## 🎨 การออกแบบ (UX / UI Design)
