@@ -206,16 +206,25 @@
                     <line x1="16" y1="17" x2="8" y2="17" />
                     <polyline points="10 9 9 9 8 9" />
                 </svg>
-                <span>ประวัติซ่อม</span>
+                <span>บันทึกการซ่อม</span>
             </li>
-            <li class="nav-item" data-page="analytics">
+            <li class="nav-item" data-page="fuel">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="18" y1="20" x2="18" y2="10" />
-                    <line x1="12" y1="20" x2="12" y2="4" />
-                    <line x1="6" y1="20" x2="6" y2="14" />
+                    <path d="M3 22V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16" />
+                    <path d="M3 22h10" />
+                    <path d="M13 10h2a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 6" />
+                    <path d="M6 12h4" />
+                    <path d="M6 8h4" />
                 </svg>
-                <span>สถิติค่าใช้จ่าย</span>
+                <span>บันทึกน้ำมัน</span>
+            </li>
+            <li class="nav-item" data-page="charge">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                </svg>
+                <span>บันทึกการชาร์จ</span>
             </li>
         </ul>
         <div class="sidebar-divider"></div>
@@ -242,26 +251,6 @@
                     </svg>
                 </span>
                 <span class="theme-label">เปลี่ยนเป็น Light Mode</span>
-            </button>
-            <button class="btn-export" id="btnExport" title="ส่งออกข้อมูล">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
-                <span>ส่งออก CSV</span>
-            </button>
-            <button class="btn-export" id="btnExportPDF" title="ส่งออก PDF">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                </svg>
-                <span>ส่งออก PDF</span>
             </button>
             <button class="btn-export" id="btnSettings" title="ตั้งค่า">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -376,8 +365,7 @@
             <div class="dashboard-grid">
                 <div class="card">
                     <div class="card-header">
-                        <h2>ประวัติซ่อมล่าสุด</h2>
-                        <button class="btn-link" data-goto="records">ดูทั้งหมด →</button>
+                        <h2 id="recentRecordsHeader">ประวัติการซ่อมล่าสุด</h2>
                     </div>
                     <div class="card-body" id="recentRecords">
                         <div class="empty-state">
@@ -450,13 +438,33 @@
                     <h1>ประวัติซ่อม</h1>
                     <p class="subtitle">รายการบันทึกการซ่อมทั้งหมด</p>
                 </div>
-                <button class="btn btn-primary" id="btnAddRecord">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    บันทึกการซ่อม
-                </button>
+                <div class="page-header-actions">
+                    <button class="btn btn-ghost btn-sm" id="btnExport" title="ส่งออก CSV">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        CSV
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btnExportPDF" title="ส่งออก PDF">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        PDF
+                    </button>
+                    <button class="btn btn-primary" id="btnAddRecord">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        บันทึกการซ่อม
+                    </button>
+                </div>
             </div>
             <!-- Filters -->
             <div class="filters-bar">
@@ -503,22 +511,16 @@
                     <p>เพิ่มบันทึกการซ่อมครั้งแรกของคุณ</p>
                 </div>
             </div>
-        </section>
 
-
-        <!-- =================== ANALYTICS PAGE =================== -->
-        <section class="page" id="page-analytics">
-            <div class="page-header">
-                <div>
-                    <h1>สถิติค่าใช้จ่าย</h1>
-                    <p class="subtitle">วิเคราะห์ค่าใช้จ่ายในการซ่อมบำรุง</p>
-                </div>
+            <!-- Repair Analytics -->
+            <div class="fuel-analytics-header">
+                <h2>📊 สถิติค่าใช้จ่ายการซ่อม</h2>
+                <select id="analyticsYear" class="filter-select filter-small"></select>
             </div>
             <div class="analytics-grid">
                 <div class="card analytics-card">
                     <div class="card-header">
                         <h2>ค่าใช้จ่ายรายเดือน</h2>
-                        <select id="analyticsYear" class="filter-select filter-small"></select>
                     </div>
                     <div class="card-body chart-container">
                         <canvas id="monthlyChart"></canvas>
@@ -542,6 +544,355 @@
                 </div>
             </div>
         </section>
+
+        <!-- =================== FUEL LOG PAGE =================== -->
+        <section class="page" id="page-fuel">
+            <div class="page-header">
+                <div>
+                    <h1>บันทึกน้ำมัน</h1>
+                    <p class="subtitle">ติดตามการเติมน้ำมันและอัตราสิ้นเปลือง</p>
+                </div>
+                <div class="page-header-actions">
+                    <button class="btn btn-ghost btn-sm" id="btnExportFuelCSV" title="ส่งออก CSV">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        CSV
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btnExportFuelPDF" title="ส่งออก PDF">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        PDF
+                    </button>
+                    <button class="btn btn-primary" id="btnAddFuel">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        เติมน้ำมัน
+                    </button>
+                </div>
+            </div>
+
+            <!-- Fuel Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card" data-accent="green">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M3 22V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16" />
+                            <path d="M3 22h10" />
+                            <path
+                                d="M13 10h2a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 6" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statFuelCount">0</span>
+                        <span class="stat-label">จำนวนครั้งที่เติม</span>
+                    </div>
+                </div>
+                <div class="stat-card" data-accent="orange">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23" />
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statFuelCost">฿0</span>
+                        <span class="stat-label">ค่าน้ำมันรวม</span>
+                    </div>
+                </div>
+                <div class="stat-card" data-accent="blue">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statFuelEfficiency">- กม./ล.</span>
+                        <span class="stat-label">อัตราสิ้นเปลืองเฉลี่ย</span>
+                    </div>
+                </div>
+                <div class="stat-card" data-accent="purple">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                            <line x1="16" y1="2" x2="16" y2="6" />
+                            <line x1="8" y1="2" x2="8" y2="6" />
+                            <line x1="3" y1="10" x2="21" y2="10" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="statFuelLast">-</span>
+                        <span class="stat-label">เติมล่าสุด</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fuel Filters -->
+            <div class="filters-bar">
+                <div class="search-box">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input type="text" id="searchFuel" placeholder="ค้นหาชื่อปั๊ม, หมายเหตุ...">
+                </div>
+                <select id="filterFuelVehicle" class="filter-select">
+                    <option value="">รถทุกคัน</option>
+                </select>
+                <select id="filterFuelType" class="filter-select">
+                    <option value="">น้ำมันทุกประเภท</option>
+                    <option value="gasohol91">⛽ แก๊สโซฮอล์ 91</option>
+                    <option value="gasohol95">⛽ แก๊สโซฮอล์ 95</option>
+                    <option value="e20">⛽ แก๊สโซฮอล์ E20</option>
+                    <option value="e85">⛽ E85</option>
+                    <option value="diesel">⛽ ดีเซล</option>
+                    <option value="dieselB7">⛽ ดีเซล B7</option>
+                    <option value="premium_diesel">⛽ ดีเซลพรีเมียม</option>
+                    <option value="benzin95">⛽ เบนซิน 95</option>
+                    <option value="ngv">🔵 NGV</option>
+                    <option value="lpg">🟢 LPG</option>
+                    <option value="ev">🔋 ชาร์จ EV</option>
+                </select>
+            </div>
+            <div class="records-list" id="fuelLogsList">
+                <div class="empty-state-large">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"
+                        opacity="0.3">
+                        <path d="M3 22V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16" />
+                        <path d="M3 22h10" />
+                        <path d="M13 10h2a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 6" />
+                    </svg>
+                    <h3>ยังไม่มีบันทึกการเติมน้ำมัน</h3>
+                    <p>เพิ่มบันทึกการเติมน้ำมันครั้งแรกของคุณ</p>
+                </div>
+            </div>
+
+            <!-- Fuel Analytics -->
+            <div class="fuel-analytics-header">
+                <h2>📊 รายงานน้ำมัน</h2>
+                <select id="fuelAnalyticsYear" class="filter-select filter-small"></select>
+            </div>
+            <div class="analytics-grid">
+                <div class="card analytics-card">
+                    <div class="card-header">
+                        <h2>ค่าน้ำมันรายเดือน</h2>
+                    </div>
+                    <div class="card-body chart-container" id="fuelMonthlyChartContainer">
+                        <canvas id="fuelMonthlyChart"></canvas>
+                    </div>
+                </div>
+                <div class="card analytics-card">
+                    <div class="card-header">
+                        <h2>สัดส่วนตามประเภทน้ำมัน</h2>
+                    </div>
+                    <div class="card-body chart-container" id="fuelTypeChartContainer">
+                        <canvas id="fuelTypeChart"></canvas>
+                    </div>
+                </div>
+                <div class="card analytics-card">
+                    <div class="card-header">
+                        <h2>อัตราสิ้นเปลือง (กม./ล.)</h2>
+                    </div>
+                    <div class="card-body chart-container" id="fuelEfficiencyChartContainer">
+                        <canvas id="fuelEfficiencyChart"></canvas>
+                    </div>
+                </div>
+                <div class="card analytics-card">
+                    <div class="card-header">
+                        <h2>ค่าน้ำมันตามรถ</h2>
+                    </div>
+                    <div class="card-body chart-container" id="fuelVehicleChartContainer">
+                        <canvas id="fuelVehicleChart"></canvas>
+                    </div>
+                </div>
+                <div class="card analytics-card full-width">
+                    <div class="card-header">
+                        <h2>แนวโน้มราคาน้ำมัน (บาท/ลิตร)</h2>
+                    </div>
+                    <div class="card-body chart-container" id="fuelPriceChartContainer">
+                        <canvas id="fuelPriceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================== EV CHARGE PAGE =================== -->
+        <section class="page" id="page-charge">
+            <div class="page-header">
+                <div>
+                    <h1>บันทึกการชาร์จ</h1>
+                    <p class="subtitle">ติดตามการชาร์จรถไฟฟ้าและประสิทธิภาพ</p>
+                </div>
+                <div class="page-header-actions">
+                    <button class="btn btn-ghost btn-sm" id="btnExportChargeCSV" title="ส่งออก CSV">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        CSV
+                    </button>
+                    <button class="btn btn-ghost btn-sm" id="btnExportChargePDF" title="ส่งออก PDF">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        PDF
+                    </button>
+                    <button class="btn btn-primary" id="btnAddCharge">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                        </svg>
+                        ชาร์จไฟ
+                    </button>
+                </div>
+            </div>
+
+            <!-- Charge Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card" data-accent="blue">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">จำนวนครั้งชาร์จ</span>
+                        <span class="stat-value" id="chargeTotalCount">0</span>
+                    </div>
+                </div>
+                <div class="stat-card" data-accent="orange">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">ค่าชาร์จรวม</span>
+                        <span class="stat-value" id="chargeTotalCost">฿0</span>
+                    </div>
+                </div>
+                <div class="stat-card" data-accent="green">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">ประสิทธิภาพ (กม./kWh)</span>
+                        <span class="stat-value" id="chargeEfficiency">-</span>
+                    </div>
+                </div>
+                <div class="stat-card" data-accent="purple">
+                    <div class="stat-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="1" y="6" width="18" height="12" rx="2" />
+                            <line x1="23" y1="13" x2="23" y2="11" />
+                        </svg>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">พลังงานรวม</span>
+                        <span class="stat-value" id="chargeTotalKwh">0 kWh</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charge Filters -->
+            <div class="filters-bar">
+                <div class="search-box">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                    <input type="text" id="searchCharge" placeholder="ค้นหาสถานี...">
+                </div>
+                <select id="filterChargeVehicle" class="filter-select">
+                    <option value="">รถทุกคัน</option>
+                </select>
+                <select id="filterChargeType" class="filter-select">
+                    <option value="">ประเภทชาร์จทั้งหมด</option>
+                    <option value="ac_home">🏠 AC ชาร์จบ้าน</option>
+                    <option value="ac_normal">🔌 AC ปกติ</option>
+                    <option value="dc_fast">⚡ DC เร็ว</option>
+                </select>
+            </div>
+            <div class="records-list" id="chargeLogsList">
+                <div class="empty-state-large">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"
+                        opacity="0.3">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                    </svg>
+                    <h3>ยังไม่มีบันทึกการชาร์จ</h3>
+                    <p>เพิ่มบันทึกการชาร์จครั้งแรกของคุณ</p>
+                </div>
+            </div>
+
+            <!-- Charge Analytics -->
+            <div class="fuel-analytics-header">
+                <h2>📊 รายงานการชาร์จ</h2>
+                <select id="chargeAnalyticsYear" class="filter-select filter-small"></select>
+            </div>
+            <div class="analytics-grid">
+                <div class="card analytics-card">
+                    <div class="card-header">
+                        <h2>ค่าชาร์จรายเดือน</h2>
+                    </div>
+                    <div class="card-body chart-container" id="chargeMonthlyChartContainer"><canvas
+                            id="chargeMonthlyChart"></canvas></div>
+                </div>
+                <div class="card analytics-card">
+                    <div class="card-header">
+                        <h2>สัดส่วน AC vs DC</h2>
+                    </div>
+                    <div class="card-body chart-container" id="chargeTypeChartContainer"><canvas
+                            id="chargeTypeChart"></canvas></div>
+                </div>
+                <div class="card analytics-card">
+                    <div class="card-header">
+                        <h2>ประสิทธิภาพ (กม./kWh)</h2>
+                    </div>
+                    <div class="card-body chart-container" id="chargeEfficiencyChartContainer"><canvas
+                            id="chargeEfficiencyChart"></canvas></div>
+                </div>
+                <div class="card analytics-card">
+                    <div class="card-header">
+                        <h2>ค่าชาร์จตามรถ</h2>
+                    </div>
+                    <div class="card-body chart-container" id="chargeVehicleChartContainer"><canvas
+                            id="chargeVehicleChart"></canvas></div>
+                </div>
+                <div class="card analytics-card full-width">
+                    <div class="card-header">
+                        <h2>แนวโน้มค่าไฟ (บาท/kWh)</h2>
+                    </div>
+                    <div class="card-body chart-container" id="chargePriceChartContainer"><canvas
+                            id="chargePriceChart"></canvas></div>
+                </div>
+            </div>
+        </section>
+
+
+
     </main>
 
     <!-- =================== MODALS =================== -->
@@ -736,6 +1087,177 @@
         </div>
     </div>
 
+
+    <!-- Fuel Log Modal -->
+    <!-- Charge Modal -->
+    <div class="modal-overlay" id="chargeModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="chargeModalTitle">บันทึกการชาร์จ</h2>
+                <button class="modal-close" data-close="chargeModal">&times;</button>
+            </div>
+            <form id="chargeForm" class="modal-body">
+                <input type="hidden" id="chargeId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="chargeVehicle">เลือกรถ *</label>
+                        <select id="chargeVehicle" required>
+                            <option value="">-- เลือกรถ --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="chargeDate">วันที่ชาร์จ *</label>
+                        <input type="date" id="chargeDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="chargeType">ประเภทการชาร์จ *</label>
+                        <select id="chargeType" required>
+                            <option value="">เลือกประเภท</option>
+                            <option value="ac_home">🏠 AC ชาร์จบ้าน</option>
+                            <option value="ac_normal">🔌 AC ปกติ</option>
+                            <option value="dc_fast">⚡ DC เร็ว</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="chargeProvider">ผู้ให้บริการ</label>
+                        <select id="chargeProvider">
+                            <option value="">เลือกผู้ให้บริการ</option>
+                            <option value="home">🏠 ชาร์จบ้าน</option>
+                            <option value="ea">EA Anywhere</option>
+                            <option value="pea_volta">PEA Volta</option>
+                            <option value="ptt_ev">PTT EV Station</option>
+                            <option value="sharge">Sharge</option>
+                            <option value="evolt">EVolt</option>
+                            <option value="gpx">GPX</option>
+                            <option value="tesla">Tesla Supercharger</option>
+                            <option value="other">อื่นๆ</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="chargeKwh">พลังงาน (kWh) *</label>
+                        <input type="number" id="chargeKwh" step="0.01" min="0" placeholder="เช่น 35.5" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="chargePricePerKwh">ค่าไฟ (บาท/kWh) *</label>
+                        <input type="number" id="chargePricePerKwh" step="0.01" min="0" placeholder="เช่น 6.50"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label for="chargeTotalCostInput">ค่าใช้จ่ายรวม (บาท)</label>
+                        <input type="number" id="chargeTotalCostInput" step="0.01" min="0" class="auto-calc-field"
+                            readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="chargeMileage">เลขไมล์ (กม.)</label>
+                        <input type="number" id="chargeMileage" step="1" min="0" placeholder="เช่น 12500">
+                    </div>
+                    <div class="form-group">
+                        <label for="chargeBattStart">% แบตเริ่ม</label>
+                        <input type="number" id="chargeBattStart" step="1" min="0" max="100" placeholder="เช่น 15">
+                    </div>
+                    <div class="form-group">
+                        <label for="chargeBattEnd">% แบตจบ</label>
+                        <input type="number" id="chargeBattEnd" step="1" min="0" max="100" placeholder="เช่น 90">
+                    </div>
+                    <div class="form-group">
+                        <label for="chargeStation">ชื่อสถานี/สถานที่</label>
+                        <input type="text" id="chargeStation" placeholder="เช่น เซ็นทรัล ลาดพร้าว">
+                    </div>
+                    <div class="form-group">
+                        <label for="chargeNotes">หมายเหตุ</label>
+                        <textarea id="chargeNotes" rows="2" placeholder="รายละเอียดเพิ่มเติม"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" data-close="chargeModal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="fuelModal">
+        <div class="modal modal-lg">
+            <div class="modal-header">
+                <h2 id="fuelModalTitle">บันทึกการเติมน้ำมัน</h2>
+                <button class="modal-close" data-close="fuelModal">&times;</button>
+            </div>
+            <form id="fuelForm" class="modal-body">
+                <input type="hidden" id="fuelId">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fuelVehicle">เลือกรถ <span class="required">*</span></label>
+                        <select id="fuelVehicle" required>
+                            <option value="">-- เลือกรถ --</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="fuelDate">วันที่เติม <span class="required">*</span></label>
+                        <input type="date" id="fuelDate" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fuelType">ประเภทน้ำมัน <span class="required">*</span></label>
+                        <select id="fuelType" required>
+                            <option value="">-- เลือกประเภท --</option>
+                            <option value="gasohol91">⛽ แก๊สโซฮอล์ 91</option>
+                            <option value="gasohol95">⛽ แก๊สโซฮอล์ 95</option>
+                            <option value="e20">⛽ แก๊สโซฮอล์ E20</option>
+                            <option value="e85">⛽ E85</option>
+                            <option value="diesel">⛽ ดีเซล</option>
+                            <option value="dieselB7">⛽ ดีเซล B7</option>
+                            <option value="premium_diesel">⛽ ดีเซลพรีเมียม</option>
+                            <option value="benzin95">⛽ เบนซิน 95</option>
+                            <option value="ngv">🔵 NGV</option>
+                            <option value="lpg">🟢 LPG</option>
+                            <option value="ev">🔋 ชาร์จ EV</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="fuelMileage">เลขไมล์ (กม.)</label>
+                        <input type="number" id="fuelMileage" placeholder="เช่น 52000" min="0">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fuelLiters">จำนวนลิตร <span class="required">*</span></label>
+                        <input type="number" id="fuelLiters" placeholder="เช่น 40" min="0" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="fuelPricePerLiter">ราคาต่อลิตร (บาท) <span class="required">*</span></label>
+                        <input type="number" id="fuelPricePerLiter" placeholder="เช่น 35.50" min="0" step="0.01"
+                            required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fuelTotalCost">ราคารวม (บาท)</label>
+                        <input type="number" id="fuelTotalCost" placeholder="คำนวณอัตโนมัติ" min="0" step="0.01"
+                            readonly class="auto-calc-field">
+                    </div>
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="fuelFullTank">
+                            <span>เติมเต็มถัง</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="fuelStation">ชื่อปั๊ม/สถานี</label>
+                    <input type="text" id="fuelStation" placeholder="เช่น ปตท. สาขาลาดพร้าว">
+                </div>
+                <div class="form-group">
+                    <label for="fuelNotes">หมายเหตุ</label>
+                    <textarea id="fuelNotes" rows="2" placeholder="หมายเหตุเพิ่มเติม..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" data-close="fuelModal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-primary">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Delete Confirmation Modal -->
     <div class="modal-overlay" id="deleteModal">

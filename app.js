@@ -30,13 +30,19 @@ const DB = {
     SESSION_KEY: 'carcare_session',
     VEHICLES_KEY: 'carcare_vehicles',
     RECORDS_KEY: 'carcare_records',
+    FUEL_LOGS_KEY: 'carcare_fuel_logs',
+    CHARGE_LOGS_KEY: 'carcare_charge_logs',
 
     // In-memory cache
     _vehicles: [],
     _records: [],
+    _fuelLogs: [],
+    _chargeLogs: [],
     _userId: null,
     _unsubVehicles: null,
     _unsubRecords: null,
+    _unsubFuelLogs: null,
+    _unsubChargeLogs: null,
 
     getVehicles() {
         return this._vehicles;
@@ -54,6 +60,22 @@ const DB = {
         this._syncToCloud('records', records);
     },
 
+    getFuelLogs() {
+        return this._fuelLogs;
+    },
+    saveFuelLogs(logs) {
+        this._fuelLogs = logs;
+        this._syncToCloud('fuelLogs', logs);
+    },
+
+    getChargeLogs() {
+        return this._chargeLogs;
+    },
+    saveChargeLogs(logs) {
+        this._chargeLogs = logs;
+        this._syncToCloud('chargeLogs', logs);
+    },
+
     // Firestore sync (fire-and-forget)
     _syncToCloud(collection, data) {
         if (!this._userId) return;
@@ -68,8 +90,10 @@ const DB = {
         try {
             const vSnap = await fireDB.doc(`users/${this._userId}/data/vehicles`).get();
             const rSnap = await fireDB.doc(`users/${this._userId}/data/records`).get();
+            const fSnap = await fireDB.doc(`users/${this._userId}/data/fuelLogs`).get();
             this._vehicles = vSnap.exists ? (vSnap.data().items || []) : [];
             this._records = rSnap.exists ? (rSnap.data().items || []) : [];
+            this._fuelLogs = fSnap.exists ? (fSnap.data().items || []) : [];
         } catch (err) {
             console.warn('Cloud load error, using local cache:', err);
         }
@@ -96,27 +120,52 @@ const DB = {
                     if (typeof renderAnalytics === 'function') renderAnalytics();
                 }
             });
+        this._unsubFuelLogs = fireDB.doc(`users/${this._userId}/data/fuelLogs`)
+            .onSnapshot(snap => {
+                if (snap.exists && snap.metadata.hasPendingWrites === false) {
+                    this._fuelLogs = snap.data().items || [];
+                    if (typeof renderFuelLogs === 'function') renderFuelLogs();
+                    if (typeof renderDashboard === 'function') renderDashboard();
+                }
+            });
+        this._unsubChargeLogs = fireDB.doc(`users/${this._userId}/data/chargeLogs`)
+            .onSnapshot(snap => {
+                if (snap.exists && snap.metadata.hasPendingWrites === false) {
+                    this._chargeLogs = snap.data().items || [];
+                    if (typeof renderChargeLogs === 'function') renderChargeLogs();
+                }
+            });
     },
 
     stopRealtimeSync() {
         if (this._unsubVehicles) this._unsubVehicles();
         if (this._unsubRecords) this._unsubRecords();
+        if (this._unsubFuelLogs) this._unsubFuelLogs();
+        if (this._unsubChargeLogs) this._unsubChargeLogs();
     },
 
     // Migrate localStorage data to Firestore (first-time)
     async migrateLocalData() {
         const localVehicles = JSON.parse(localStorage.getItem(this.VEHICLES_KEY) || '[]');
         const localRecords = JSON.parse(localStorage.getItem(this.RECORDS_KEY) || '[]');
+        const localFuelLogs = JSON.parse(localStorage.getItem(this.FUEL_LOGS_KEY) || '[]');
 
-        if (localVehicles.length > 0 || localRecords.length > 0) {
+        if (localVehicles.length > 0 || localRecords.length > 0 || localFuelLogs.length > 0) {
             // Check if Firestore already has data
             const vSnap = await fireDB.doc(`users/${this._userId}/data/vehicles`).get();
             if (!vSnap.exists || (vSnap.data().items || []).length === 0) {
                 // Firestore is empty, migrate local data
                 this._vehicles = localVehicles;
                 this._records = localRecords;
+                this._fuelLogs = localFuelLogs;
                 this._syncToCloud('vehicles', localVehicles);
                 this._syncToCloud('records', localRecords);
+                this._syncToCloud('fuelLogs', localFuelLogs);
+                const localChargeLogs = JSON.parse(localStorage.getItem(this.CHARGE_LOGS_KEY) || '[]');
+                if (localChargeLogs.length > 0) {
+                    this._chargeLogs = localChargeLogs;
+                    this._syncToCloud('chargeLogs', localChargeLogs);
+                }
                 console.log('Migrated local data to Firestore');
             }
         }
@@ -169,6 +218,20 @@ const REPAIR_TYPES = {
     transmission: { emoji: '⚙️', label: 'เกียร์/ส่งกำลัง', color: '#ec4899' },
     maintenance: { emoji: '📋', label: 'ตรวจเช็คประจำ', color: '#3b82f6' },
     other: { emoji: '📌', label: 'อื่นๆ', color: '#94a3b8' }
+};
+
+const FUEL_TYPES = {
+    gasohol91: { emoji: '⛽', label: 'แก๊สโซฮอล์ 91', color: '#22c55e' },
+    gasohol95: { emoji: '⛽', label: 'แก๊สโซฮอล์ 95', color: '#16a34a' },
+    e20: { emoji: '⛽', label: 'แก๊สโซฮอล์ E20', color: '#15803d' },
+    e85: { emoji: '⛽', label: 'E85', color: '#166534' },
+    diesel: { emoji: '⛽', label: 'ดีเซล', color: '#eab308' },
+    dieselB7: { emoji: '⛽', label: 'ดีเซล B7', color: '#ca8a04' },
+    premium_diesel: { emoji: '⛽', label: 'ดีเซลพรีเมียม', color: '#a16207' },
+    benzin95: { emoji: '⛽', label: 'เบนซิน 95', color: '#ef4444' },
+    ngv: { emoji: '🔵', label: 'NGV', color: '#3b82f6' },
+    lpg: { emoji: '🟢', label: 'LPG', color: '#06b6d4' },
+    ev: { emoji: '🔋', label: 'ชาร์จ EV', color: '#8b5cf6' }
 };
 
 const STATUS_MAP = {
@@ -267,8 +330,9 @@ function initNavigation() {
             // Refresh page data
             if (page === 'dashboard') renderDashboard();
             if (page === 'vehicles') renderVehicles();
-            if (page === 'records') renderRecords();
-            if (page === 'analytics') renderAnalytics();
+            if (page === 'records') { renderRecords(); renderAnalytics(); }
+            if (page === 'fuel') renderFuelLogs();
+            if (page === 'charge') renderChargeLogs();
         });
     });
 
@@ -546,6 +610,12 @@ function confirmDelete() {
         // Also remove associated records
         let records = DB.getRecords().filter(r => r.vehicleId !== deleteTarget.id);
         DB.saveRecords(records);
+        // Also remove associated fuel logs
+        let fuelLogs = DB.getFuelLogs().filter(f => f.vehicleId !== deleteTarget.id);
+        DB.saveFuelLogs(fuelLogs);
+        // Also remove associated charge logs
+        let chargeLogs = DB.getChargeLogs().filter(c => c.vehicleId !== deleteTarget.id);
+        DB.saveChargeLogs(chargeLogs);
         showToast('ลบรถและบันทึกที่เกี่ยวข้องแล้ว');
         renderVehicles();
     } else if (deleteTarget.type === 'record') {
@@ -553,6 +623,16 @@ function confirmDelete() {
         DB.saveRecords(records);
         showToast('ลบบันทึกการซ่อมแล้ว');
         renderRecords();
+    } else if (deleteTarget.type === 'fuel') {
+        let fuelLogs = DB.getFuelLogs().filter(f => f.id !== deleteTarget.id);
+        DB.saveFuelLogs(fuelLogs);
+        showToast('ลบบันทึกการเติมน้ำมันแล้ว');
+        renderFuelLogs();
+    } else if (deleteTarget.type === 'charge') {
+        let chargeLogs = DB.getChargeLogs().filter(l => l.id !== deleteTarget.id);
+        DB.saveChargeLogs(chargeLogs);
+        showToast('ลบบันทึกการชาร์จแล้ว');
+        renderChargeLogs();
     }
 
     closeModal('deleteModal');
@@ -824,7 +904,11 @@ function updateVehicleSelects() {
     const vehicles = DB.getVehicles();
     const selects = [
         document.getElementById('recordVehicle'),
-        document.getElementById('filterVehicle')
+        document.getElementById('filterVehicle'),
+        document.getElementById('fuelVehicle'),
+        document.getElementById('filterFuelVehicle'),
+        document.getElementById('chargeVehicle'),
+        document.getElementById('filterChargeVehicle')
     ];
 
     selects.forEach(sel => {
@@ -832,7 +916,9 @@ function updateVehicleSelects() {
         const currentVal = sel.value;
         const firstOption = sel.querySelector('option:first-child');
         sel.innerHTML = '';
-        sel.appendChild(firstOption);
+        if (firstOption) {
+            sel.appendChild(firstOption);
+        }
 
         vehicles.forEach(v => {
             const opt = document.createElement('option');
@@ -870,7 +956,7 @@ function renderDashboard() {
     const upcomingCount = upcomingRecords.filter(r => daysUntil(r.nextDate) >= 0).length;
     document.getElementById('statUpcoming').textContent = upcomingCount;
 
-    // Recent Records (last 5)
+    // Recent Records
     const recentContainer = document.getElementById('recentRecords');
     const sortedRecords = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
     const recent = sortedRecords.slice(0, 5);
@@ -949,7 +1035,7 @@ function renderVehicles() {
 
     if (vehicles.length === 0) {
         container.innerHTML = `
-            <div class="empty-state-large">
+                <div class="empty-state-large" >
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2"/><path d="M9 17h6"/><path d="M14 7l3 5"/></svg>
                 <h3>ยังไม่มีข้อมูลรถยนต์</h3>
                 <p>เพิ่มรถคันแรกของคุณเพื่อเริ่มบันทึกการซ่อม</p>
@@ -964,7 +1050,7 @@ function renderVehicles() {
 
         const imageHtml = v.image
             ? `<div class="vehicle-card-image"><img src="${v.image}" alt="${v.brand} ${v.model}"></div>`
-            : `<div class="vehicle-card-image"><div class="no-image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2"/><path d="M9 17h6"/></svg><span>ยังไม่มีรูป</span></div></div>`;
+            : `<div class="vehicle-card-image"><div class="no-image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2" /><path d="M9 17h6" /></svg><span>ยังไม่มีรูป</span></div></div>`;
 
         return `
             <div class="vehicle-card">
@@ -1038,7 +1124,7 @@ function renderRecords() {
 
     if (filtered.length === 0) {
         container.innerHTML = `
-            <div class="empty-state-large">
+                <div class="empty-state-large" >
                 <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 <h3>${records.length === 0 ? 'ยังไม่มีบันทึกการซ่อม' : 'ไม่พบรายการที่ตรงกับตัวกรอง'}</h3>
                 <p>${records.length === 0 ? 'เพิ่มบันทึกการซ่อมครั้งแรกของคุณ' : 'ลองเปลี่ยนเงื่อนไขการค้นหา'}</p>
@@ -1129,7 +1215,7 @@ function renderMonthlyChart(records) {
     years.forEach(y => {
         const opt = document.createElement('option');
         opt.value = y;
-        opt.textContent = `ปี ${y + 543}`;
+        opt.textContent = `ปี ${y + 543} `;
         yearSelect.appendChild(opt);
     });
 
@@ -1149,16 +1235,16 @@ function renderMonthlyChart(records) {
 
     if (records.length === 0) {
         container.innerHTML = `
-            <div class="no-data-chart">
+                <div class="no-data-chart" >
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                 <span>ยังไม่มีข้อมูลสำหรับแสดงกราฟ</span>
-            </div>`;
+            </div> `;
         return;
     }
 
     container.innerHTML = `
-        <div class="bar-chart">
-            ${monthlyData.map((val, i) => {
+                <div class="bar-chart" >
+                    ${monthlyData.map((val, i) => {
         const height = Math.max((val / maxVal) * 100, val > 0 ? 3 : 0.5);
         return `
                     <div class="bar-col">
@@ -1166,8 +1252,9 @@ function renderMonthlyChart(records) {
                         <div class="bar" style="height: ${height}%" title="${THAI_MONTHS_FULL[i]}: ${formatCurrency(val)}"></div>
                         <span class="bar-label">${THAI_MONTHS[i]}</span>
                     </div>`;
-    }).join('')}
-        </div>`;
+    }).join('')
+        }
+        </div> `;
 }
 
 function renderTypeChart(records) {
@@ -1176,10 +1263,10 @@ function renderTypeChart(records) {
 
     if (records.length === 0) {
         container.innerHTML = `
-            <div class="no-data-chart">
+                <div class="no-data-chart" >
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>
                 <span>ยังไม่มีข้อมูลสำหรับแสดงกราฟ</span>
-            </div>`;
+            </div> `;
         return;
     }
 
@@ -1200,13 +1287,13 @@ function renderTypeChart(records) {
         const typeInfo = REPAIR_TYPES[type] || REPAIR_TYPES.other;
         const start = accumulated;
         accumulated += (val / total) * 360;
-        gradientStops.push(`${typeInfo.color} ${start}deg ${accumulated}deg`);
+        gradientStops.push(`${typeInfo.color} ${start}deg ${accumulated} deg`);
     });
 
-    const gradient = `conic-gradient(${gradientStops.join(', ')})`;
+    const gradient = `conic - gradient(${gradientStops.join(', ')})`;
 
     container.innerHTML = `
-        <div class="donut-chart-wrapper">
+                <div class="donut-chart-wrapper" >
             <div class="donut-chart" style="background: ${gradient}">
                 <div class="donut-center">
                     <span class="total-label">ทั้งหมด</span>
@@ -1225,7 +1312,7 @@ function renderTypeChart(records) {
                         </div>`;
     }).join('')}
             </div>
-        </div>`;
+        </div> `;
 }
 
 function renderVehicleChart(records, vehicles) {
@@ -1234,10 +1321,10 @@ function renderVehicleChart(records, vehicles) {
 
     if (records.length === 0 || vehicles.length === 0) {
         container.innerHTML = `
-            <div class="no-data-chart">
+                <div class="no-data-chart" >
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2"/></svg>
                 <span>ยังไม่มีข้อมูลสำหรับแสดงกราฟ</span>
-            </div>`;
+            </div> `;
         return;
     }
 
@@ -1255,8 +1342,8 @@ function renderVehicleChart(records, vehicles) {
     const colors = ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899'];
 
     container.innerHTML = `
-        <div class="h-bar-chart">
-            ${sorted.map((item, i) => {
+                <div class="h-bar-chart" >
+                    ${sorted.map((item, i) => {
         const pct = (item.cost / maxCost) * 100;
         const color = colors[i % colors.length];
         return `
@@ -1268,8 +1355,1249 @@ function renderVehicleChart(records, vehicles) {
                             </div>
                         </div>
                     </div>`;
+    }).join('')
+        }
+        </div> `;
+}
+
+// ==========================================
+// Fuel Log CRUD
+// ==========================================
+function initFuelForm() {
+    const addBtn = document.getElementById('btnAddFuel');
+    if (addBtn) {
+        addBtn.addEventListener('click', () => {
+            resetFuelForm();
+            document.getElementById('fuelModalTitle').textContent = 'บันทึกการเติมน้ำมัน';
+            updateVehicleSelects();
+            openModal('fuelModal');
+        });
+    }
+
+    const fuelForm = document.getElementById('fuelForm');
+    if (fuelForm) {
+        fuelForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveFuelLog();
+        });
+    }
+
+    // Auto-calculate total cost
+    const litersInput = document.getElementById('fuelLiters');
+    const priceInput = document.getElementById('fuelPricePerLiter');
+    const totalInput = document.getElementById('fuelTotalCost');
+
+    const autoCalc = () => {
+        const liters = parseFloat(litersInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        if (liters > 0 && price > 0) {
+            totalInput.value = (liters * price).toFixed(2);
+        } else {
+            totalInput.value = '';
+        }
+    };
+
+    if (litersInput) litersInput.addEventListener('input', autoCalc);
+    if (priceInput) priceInput.addEventListener('input', autoCalc);
+}
+
+function resetFuelForm() {
+    document.getElementById('fuelId').value = '';
+    document.getElementById('fuelVehicle').value = '';
+    document.getElementById('fuelDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('fuelType').value = '';
+    document.getElementById('fuelMileage').value = '';
+    document.getElementById('fuelLiters').value = '';
+    document.getElementById('fuelPricePerLiter').value = '';
+    document.getElementById('fuelTotalCost').value = '';
+    document.getElementById('fuelFullTank').checked = false;
+    document.getElementById('fuelStation').value = '';
+    document.getElementById('fuelNotes').value = '';
+}
+
+function saveFuelLog() {
+    const vehicleId = document.getElementById('fuelVehicle').value;
+    if (!vehicleId) {
+        showToast('กรุณาเลือกรถ', 'error');
+        return;
+    }
+
+    const vehicles = DB.getVehicles();
+    if (!vehicles.find(v => v.id === vehicleId)) {
+        showToast('ไม่พบข้อมูลรถที่เลือก', 'error');
+        return;
+    }
+
+    const id = document.getElementById('fuelId').value;
+    const liters = parseFloat(document.getElementById('fuelLiters').value) || 0;
+    const pricePerLiter = parseFloat(document.getElementById('fuelPricePerLiter').value) || 0;
+    const totalCost = parseFloat(document.getElementById('fuelTotalCost').value) || (liters * pricePerLiter);
+
+    const fuelLog = {
+        id: id || generateId(),
+        vehicleId,
+        date: document.getElementById('fuelDate').value,
+        fuelType: document.getElementById('fuelType').value,
+        mileage: document.getElementById('fuelMileage').value,
+        liters,
+        pricePerLiter,
+        totalCost,
+        fullTank: document.getElementById('fuelFullTank').checked,
+        station: document.getElementById('fuelStation').value.trim(),
+        notes: document.getElementById('fuelNotes').value.trim(),
+        createdAt: id ? undefined : new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+
+    const fuelLogs = DB.getFuelLogs();
+    if (id) {
+        const idx = fuelLogs.findIndex(f => f.id === id);
+        if (idx !== -1) {
+            fuelLog.createdAt = fuelLogs[idx].createdAt;
+            fuelLogs[idx] = fuelLog;
+        }
+        showToast('อัปเดตบันทึกน้ำมันสำเร็จ');
+    } else {
+        fuelLogs.push(fuelLog);
+        showToast('บันทึกการเติมน้ำมันสำเร็จ');
+    }
+
+    // Update vehicle mileage if provided
+    if (fuelLog.mileage) {
+        const vIdx = vehicles.findIndex(v => v.id === vehicleId);
+        if (vIdx !== -1 && (!vehicles[vIdx].mileage || Number(fuelLog.mileage) > Number(vehicles[vIdx].mileage))) {
+            vehicles[vIdx].mileage = fuelLog.mileage;
+            DB.saveVehicles(vehicles);
+        }
+    }
+
+    DB.saveFuelLogs(fuelLogs);
+    closeModal('fuelModal');
+    renderFuelLogs();
+    renderDashboard();
+}
+
+function editFuelLog(id) {
+    const fuelLogs = DB.getFuelLogs();
+    const f = fuelLogs.find(f => f.id === id);
+    if (!f) return;
+
+    updateVehicleSelects();
+    document.getElementById('fuelModalTitle').textContent = 'แก้ไขบันทึกน้ำมัน';
+    document.getElementById('fuelId').value = f.id;
+    document.getElementById('fuelVehicle').value = f.vehicleId;
+    document.getElementById('fuelDate').value = f.date;
+    document.getElementById('fuelType').value = f.fuelType;
+    document.getElementById('fuelMileage').value = f.mileage || '';
+    document.getElementById('fuelLiters').value = f.liters || '';
+    document.getElementById('fuelPricePerLiter').value = f.pricePerLiter || '';
+    document.getElementById('fuelTotalCost').value = f.totalCost || '';
+    document.getElementById('fuelFullTank').checked = f.fullTank || false;
+    document.getElementById('fuelStation').value = f.station || '';
+    document.getElementById('fuelNotes').value = f.notes || '';
+    openModal('fuelModal');
+}
+
+function deleteFuelLog(id) {
+    const f = DB.getFuelLogs().find(f => f.id === id);
+    if (!f) return;
+    const typeInfo = FUEL_TYPES[f.fuelType] || { label: 'น้ำมัน' };
+    deleteTarget = { type: 'fuel', id };
+    document.getElementById('deleteMessage').textContent = `คุณต้องการลบบันทึกเติม "${typeInfo.label}" เมื่อ ${formatDate(f.date)} หรือไม่ ? `;
+    openModal('deleteModal');
+}
+
+function calculateFuelEfficiency(vehicleId) {
+    const fuelLogs = DB.getFuelLogs()
+        .filter(f => f.vehicleId === vehicleId && f.fullTank && f.mileage)
+        .sort((a, b) => Number(a.mileage) - Number(b.mileage));
+
+    if (fuelLogs.length < 2) return null;
+
+    let totalKm = 0;
+    let totalLiters = 0;
+
+    for (let i = 1; i < fuelLogs.length; i++) {
+        const km = Number(fuelLogs[i].mileage) - Number(fuelLogs[i - 1].mileage);
+        if (km > 0) {
+            totalKm += km;
+            totalLiters += fuelLogs[i].liters;
+        }
+    }
+
+    if (totalLiters === 0) return null;
+    return (totalKm / totalLiters).toFixed(2);
+}
+
+function renderFuelLogs() {
+    const fuelLogs = DB.getFuelLogs();
+    const vehicles = DB.getVehicles();
+
+    // Summary stats
+    document.getElementById('statFuelCount').textContent = fuelLogs.length;
+
+    const totalFuelCost = fuelLogs.reduce((sum, f) => sum + (f.totalCost || 0), 0);
+    document.getElementById('statFuelCost').textContent = formatCurrency(totalFuelCost);
+
+    // Average efficiency across all vehicles
+    const vehicleIds = [...new Set(fuelLogs.map(f => f.vehicleId))];
+    const efficiencies = vehicleIds.map(id => calculateFuelEfficiency(id)).filter(e => e !== null);
+    if (efficiencies.length > 0) {
+        const avgEff = (efficiencies.reduce((s, e) => s + parseFloat(e), 0) / efficiencies.length).toFixed(2);
+        document.getElementById('statFuelEfficiency').textContent = `${avgEff} กม./ ล.`;
+    } else {
+        document.getElementById('statFuelEfficiency').textContent = '- กม./ล.';
+    }
+
+    // Last refuel date
+    const sortedAll = [...fuelLogs].sort((a, b) => new Date(b.date) - new Date(a.date));
+    document.getElementById('statFuelLast').textContent = sortedAll.length > 0 ? formatDate(sortedAll[0].date) : '-';
+
+    // Apply filters
+    const searchVal = (document.getElementById('searchFuel')?.value || '').toLowerCase();
+    const filterVehicle = document.getElementById('filterFuelVehicle')?.value || '';
+    const filterType = document.getElementById('filterFuelType')?.value || '';
+
+    let filtered = [...fuelLogs];
+
+    if (searchVal) {
+        filtered = filtered.filter(f =>
+            (f.station || '').toLowerCase().includes(searchVal) ||
+            (f.notes || '').toLowerCase().includes(searchVal)
+        );
+    }
+
+    if (filterVehicle) {
+        filtered = filtered.filter(f => f.vehicleId === filterVehicle);
+    }
+
+    if (filterType) {
+        filtered = filtered.filter(f => f.fuelType === filterType);
+    }
+
+    // Sort by date descending
+    filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Render list
+    const container = document.getElementById('fuelLogsList');
+    if (!container) return;
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+                <div class="empty-state-large" >
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3">
+                    <path d="M3 22V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16" />
+                    <path d="M3 22h10" />
+                    <path d="M13 10h2a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h0a2 2 0 0 0 2-2V9.83a2 2 0 0 0-.59-1.42L18 6" />
+                </svg>
+                <h3>${searchVal || filterVehicle || filterType ? 'ไม่พบข้อมูลที่ตรงกับตัวกรอง' : 'ยังไม่มีบันทึกการเติมน้ำมัน'}</h3>
+                <p>${searchVal || filterVehicle || filterType ? 'ลองเปลี่ยนเงื่อนไขการค้นหา' : 'เพิ่มบันทึกการเติมน้ำมันครั้งแรกของคุณ'}</p>
+            </div> `;
+        renderFuelAnalytics();
+        return;
+    }
+
+    container.innerHTML = filtered.map(f => {
+        const typeInfo = FUEL_TYPES[f.fuelType] || { emoji: '⛽', label: f.fuelType || 'ไม่ระบุ', color: '#94a3b8' };
+        const vehicleLabel = getVehicleShort(f.vehicleId);
+
+        return `
+                <div class="record-item fuel-item" >
+                <div class="record-type-icon" style="background: ${typeInfo.color}22; color: ${typeInfo.color}">${typeInfo.emoji}</div>
+                <div class="record-info">
+                    <div class="title">
+                        ${typeInfo.label}
+                        <span class="fuel-badge" style="background: ${typeInfo.color}22; color: ${typeInfo.color}; border: 1px solid ${typeInfo.color}44">${f.liters ? f.liters.toFixed(1) + ' ล.' : '-'}${f.fullTank ? ' 🔵' : ''}</span>
+                    </div>
+                    <div class="meta">
+                        <span>📅 ${formatDate(f.date)}</span>
+                        <span>🚗 ${vehicleLabel}</span>
+                        ${f.station ? `<span>⛽ ${f.station}</span>` : ''}
+                        ${f.mileage ? `<span>🔢 ${formatNumber(f.mileage)} กม.</span>` : ''}
+                    </div>
+                    ${f.pricePerLiter ? `<div class="fuel-price-detail">฿${f.pricePerLiter.toFixed(2)}/ล.</div>` : ''}
+                </div>
+                <div class="record-cost">${formatCurrency(f.totalCost)}</div>
+                <div class="record-actions">
+                    <button class="btn-icon" onclick="editFuelLog('${f.id}')" title="แก้ไข">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="btn-icon btn-icon-danger" onclick="deleteFuelLog('${f.id}')" title="ลบ">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>
+            </div> `;
+    }).join('');
+
+    // Render fuel analytics charts
+    renderFuelAnalytics();
+}
+
+// ==========================================
+// Fuel Analytics
+// ==========================================
+function renderFuelAnalytics() {
+    const fuelLogs = DB.getFuelLogs();
+    renderFuelMonthlyChart(fuelLogs);
+    renderFuelTypeChart(fuelLogs);
+    renderFuelEfficiencyChart(fuelLogs);
+    renderFuelVehicleChart(fuelLogs);
+    renderFuelPriceChart(fuelLogs);
+}
+
+function renderFuelMonthlyChart(fuelLogs) {
+    const container = document.getElementById('fuelMonthlyChartContainer');
+    if (!container) return;
+
+    // Year select
+    const years = [...new Set(fuelLogs.map(f => new Date(f.date).getFullYear()))].sort((a, b) => b - a);
+    const yearSelect = document.getElementById('fuelAnalyticsYear');
+    const currentYear = new Date().getFullYear();
+
+    if (yearSelect) {
+        yearSelect.innerHTML = '';
+        if (years.length === 0) years.push(currentYear);
+        years.forEach(y => {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.textContent = `ปี ${y + 543} `;
+            yearSelect.appendChild(opt);
+        });
+        yearSelect.onchange = () => renderFuelAnalytics();
+    }
+
+    const selectedYear = parseInt(yearSelect?.value) || currentYear;
+
+    const monthlyData = new Array(12).fill(0);
+    fuelLogs.forEach(f => {
+        const d = new Date(f.date);
+        if (d.getFullYear() === selectedYear) {
+            monthlyData[d.getMonth()] += f.totalCost || 0;
+        }
+    });
+
+    const maxVal = Math.max(...monthlyData, 1);
+
+    if (fuelLogs.length === 0) {
+        container.innerHTML = `
+                <div class="no-data-chart" >
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 22V6a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16"/><path d="M13 10h2a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2"/></svg>
+                <span>ยังไม่มีข้อมูลสำหรับแสดงกราฟ</span>
+            </div> `;
+        return;
+    }
+
+    container.innerHTML = `
+                <div class="bar-chart" >
+                    ${monthlyData.map((val, i) => {
+        const height = Math.max((val / maxVal) * 100, val > 0 ? 3 : 0.5);
+        return `
+                    <div class="bar-col">
+                        <span class="bar-value">${val > 0 ? formatCurrency(val) : ''}</span>
+                        <div class="bar fuel-bar" style="height: ${height}%" title="${THAI_MONTHS_FULL[i]}: ${formatCurrency(val)}"></div>
+                        <span class="bar-label">${THAI_MONTHS[i]}</span>
+                    </div>`;
+    }).join('')
+        }
+        </div> `;
+}
+
+function renderFuelTypeChart(fuelLogs) {
+    const container = document.getElementById('fuelTypeChartContainer');
+    if (!container) return;
+
+    if (fuelLogs.length === 0) {
+        container.innerHTML = `
+                <div class="no-data-chart" >
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg>
+                <span>ยังไม่มีข้อมูลสำหรับแสดงกราฟ</span>
+            </div> `;
+        return;
+    }
+
+    const typeData = {};
+    fuelLogs.forEach(f => {
+        const type = f.fuelType || 'other';
+        typeData[type] = (typeData[type] || 0) + (f.totalCost || 0);
+    });
+
+    const sorted = Object.entries(typeData).sort((a, b) => b[1] - a[1]);
+    const total = sorted.reduce((sum, [, val]) => sum + val, 0);
+
+    let accumulated = 0;
+    const gradientStops = [];
+    sorted.forEach(([type, val]) => {
+        const typeInfo = FUEL_TYPES[type] || { color: '#94a3b8' };
+        const start = accumulated;
+        accumulated += (val / total) * 360;
+        gradientStops.push(`${typeInfo.color} ${start}deg ${accumulated} deg`);
+    });
+
+    const gradient = `conic - gradient(${gradientStops.join(', ')})`;
+
+    container.innerHTML = `
+                <div class="donut-chart-wrapper" >
+            <div class="donut-chart" style="background: ${gradient}">
+                <div class="donut-center">
+                    <span class="total-label">ทั้งหมด</span>
+                    <span class="total-value">${formatCurrency(total)}</span>
+                </div>
+            </div>
+            <div class="donut-legend">
+                ${sorted.map(([type, val]) => {
+        const typeInfo = FUEL_TYPES[type] || { emoji: '⛽', label: type, color: '#94a3b8' };
+        const pct = ((val / total) * 100).toFixed(1);
+        return `
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:${typeInfo.color}"></div>
+                            <span class="legend-label">${typeInfo.emoji} ${typeInfo.label}</span>
+                            <span class="legend-value">${formatCurrency(val)} (${pct}%)</span>
+                        </div>`;
     }).join('')}
+            </div>
+        </div> `;
+}
+
+function renderFuelEfficiencyChart(fuelLogs) {
+    const container = document.getElementById('fuelEfficiencyChartContainer');
+    if (!container) return;
+
+    // Get logs with mileage and full tank, sorted by date
+    const validLogs = fuelLogs
+        .filter(f => f.fullTank && f.mileage && f.liters)
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    if (validLogs.length < 2) {
+        container.innerHTML = `
+                <div class="no-data-chart" >
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>ต้องมีข้อมูลเติมเต็มถังพร้อมเลขไมล์อย่างน้อย 2 ครั้ง</span>
+            </div> `;
+        return;
+    }
+
+    // Calculate efficiency for consecutive full-tank fills
+    const effPoints = [];
+    for (let i = 1; i < validLogs.length; i++) {
+        const km = Number(validLogs[i].mileage) - Number(validLogs[i - 1].mileage);
+        if (km > 0 && validLogs[i].liters > 0) {
+            effPoints.push({
+                date: validLogs[i].date,
+                efficiency: parseFloat((km / validLogs[i].liters).toFixed(2)),
+                vehicle: getVehicleShort(validLogs[i].vehicleId)
+            });
+        }
+    }
+
+    if (effPoints.length === 0) {
+        container.innerHTML = `
+                <div class="no-data-chart" >
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                <span>ไม่สามารถคำนวณอัตราสิ้นเปลืองได้</span>
+            </div> `;
+        return;
+    }
+
+    const maxEff = Math.max(...effPoints.map(p => p.efficiency), 1);
+    const minEff = Math.min(...effPoints.map(p => p.efficiency));
+    const range = maxEff - minEff || 1;
+
+    container.innerHTML = `
+                <div class="line-chart-wrapper" >
+            <div class="line-chart-area">
+                ${effPoints.map((p, i) => {
+        const x = effPoints.length === 1 ? 50 : (i / (effPoints.length - 1)) * 100;
+        const y = 100 - ((p.efficiency - minEff) / range) * 80 - 10;
+        return `
+                    <div class="line-point" style="left: ${x}%; top: ${y}%" title="${formatDate(p.date)}: ${p.efficiency} กม./ล. (${p.vehicle})">
+                        <div class="line-point-dot"></div>
+                        <div class="line-point-label">${p.efficiency}</div>
+                    </div>`;
+    }).join('')}
+                <svg class="line-chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <polyline fill="none" stroke="var(--accent-blue)" stroke-width="0.8"
+                        points="${effPoints.map((p, i) => {
+        const x = effPoints.length === 1 ? 50 : (i / (effPoints.length - 1)) * 100;
+        const y = 100 - ((p.efficiency - minEff) / range) * 80 - 10;
+        return `${x},${y}`;
+    }).join(' ')}" />
+                    <polyline fill="url(#effGrad)" stroke="none"
+                        points="${effPoints.map((p, i) => {
+        const x = effPoints.length === 1 ? 50 : (i / (effPoints.length - 1)) * 100;
+        const y = 100 - ((p.efficiency - minEff) / range) * 80 - 10;
+        return `${x},${y}`;
+    }).join(' ')} 100,100 0,100" />
+                    <defs>
+                        <linearGradient id="effGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="var(--accent-blue)" stop-opacity="0.2"/>
+                            <stop offset="100%" stop-color="var(--accent-blue)" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <div class="line-chart-labels">
+                ${effPoints.length <= 8 ? effPoints.map(p => `<span>${formatDate(p.date).split(' ').slice(0, 2).join(' ')}</span>`).join('') :
+            [effPoints[0], effPoints[Math.floor(effPoints.length / 2)], effPoints[effPoints.length - 1]].map(p => `<span>${formatDate(p.date).split(' ').slice(0, 2).join(' ')}</span>`).join('')}
+            </div>
+        </div> `;
+}
+
+function renderFuelVehicleChart(fuelLogs) {
+    const container = document.getElementById('fuelVehicleChartContainer');
+    if (!container) return;
+
+    const vehicles = DB.getVehicles();
+
+    if (fuelLogs.length === 0 || vehicles.length === 0) {
+        container.innerHTML = `
+                <div class="no-data-chart" >
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"/><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2"/></svg>
+                <span>ยังไม่มีข้อมูลสำหรับแสดงกราฟ</span>
+            </div> `;
+        return;
+    }
+
+    const vehicleData = {};
+    fuelLogs.forEach(f => {
+        vehicleData[f.vehicleId] = (vehicleData[f.vehicleId] || 0) + (f.totalCost || 0);
+    });
+
+    const sorted = Object.entries(vehicleData)
+        .map(([id, cost]) => ({ id, cost, label: getVehicleLabel(id) }))
+        .sort((a, b) => b.cost - a.cost);
+
+    const maxCost = Math.max(...sorted.map(s => s.cost), 1);
+    const colors = ['#22c55e', '#16a34a', '#15803d', '#eab308', '#3b82f6', '#8b5cf6', '#ec4899'];
+
+    container.innerHTML = `
+                <div class="h-bar-chart" >
+                    ${sorted.map((item, i) => {
+        const pct = (item.cost / maxCost) * 100;
+        const color = colors[i % colors.length];
+        return `
+                    <div class="h-bar-row">
+                        <span class="h-bar-label">${item.label}</span>
+                        <div class="h-bar-track">
+                            <div class="h-bar-fill" style="width: ${Math.max(pct, 8)}%; background: linear-gradient(90deg, ${color}, ${color}88)">
+                                <span>${formatCurrency(item.cost)}</span>
+                            </div>
+                        </div>
+                    </div>`;
+    }).join('')
+        }
+        </div> `;
+}
+
+function renderFuelPriceChart(fuelLogs) {
+    const container = document.getElementById('fuelPriceChartContainer');
+    if (!container) return;
+
+    // Group by month and average price per liter
+    const priceByMonth = {};
+    fuelLogs.forEach(f => {
+        if (!f.pricePerLiter || !f.date) return;
+        const d = new Date(f.date);
+        const key = `${d.getFullYear()} -${String(d.getMonth() + 1).padStart(2, '0')} `;
+        if (!priceByMonth[key]) priceByMonth[key] = { total: 0, count: 0 };
+        priceByMonth[key].total += f.pricePerLiter;
+        priceByMonth[key].count += 1;
+    });
+
+    const sorted = Object.entries(priceByMonth)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([key, data]) => ({
+            month: key,
+            avgPrice: parseFloat((data.total / data.count).toFixed(2)),
+            label: (() => {
+                const [y, m] = key.split('-');
+                return `${THAI_MONTHS[parseInt(m) - 1]} ${(parseInt(y) + 543).toString().slice(-2)} `;
+            })()
+        }));
+
+    if (sorted.length === 0) {
+        container.innerHTML = `
+                <div class="no-data-chart" >
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span>ยังไม่มีข้อมูลราคาน้ำมัน</span>
+            </div> `;
+        return;
+    }
+
+    const maxPrice = Math.max(...sorted.map(s => s.avgPrice), 1);
+    const minPrice = Math.min(...sorted.map(s => s.avgPrice));
+    const range = maxPrice - minPrice || 1;
+
+    container.innerHTML = `
+                <div class="line-chart-wrapper" >
+            <div class="line-chart-area">
+                ${sorted.map((p, i) => {
+        const x = sorted.length === 1 ? 50 : (i / (sorted.length - 1)) * 100;
+        const y = 100 - ((p.avgPrice - minPrice) / range) * 80 - 10;
+        return `
+                    <div class="line-point" style="left: ${x}%; top: ${y}%" title="${p.label}: ฿${p.avgPrice}/ล.">
+                        <div class="line-point-dot price-dot"></div>
+                        <div class="line-point-label">฿${p.avgPrice}</div>
+                    </div>`;
+    }).join('')}
+                <svg class="line-chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <polyline fill="none" stroke="var(--accent-orange)" stroke-width="0.8"
+                        points="${sorted.map((p, i) => {
+        const x = sorted.length === 1 ? 50 : (i / (sorted.length - 1)) * 100;
+        const y = 100 - ((p.avgPrice - minPrice) / range) * 80 - 10;
+        return `${x},${y}`;
+    }).join(' ')}" />
+                    <polyline fill="url(#priceGrad)" stroke="none"
+                        points="${sorted.map((p, i) => {
+        const x = sorted.length === 1 ? 50 : (i / (sorted.length - 1)) * 100;
+        const y = 100 - ((p.avgPrice - minPrice) / range) * 80 - 10;
+        return `${x},${y}`;
+    }).join(' ')} 100,100 0,100" />
+                    <defs>
+                        <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="var(--accent-orange)" stop-opacity="0.2"/>
+                            <stop offset="100%" stop-color="var(--accent-orange)" stop-opacity="0"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+            <div class="line-chart-labels">
+                ${sorted.map(p => `<span>${p.label}</span>`).join('')}
+            </div>
+        </div> `;
+}
+
+function initFuelFilters() {
+    const searchFuel = document.getElementById('searchFuel');
+    const filterFuelVehicle = document.getElementById('filterFuelVehicle');
+    const filterFuelType = document.getElementById('filterFuelType');
+
+    if (searchFuel) searchFuel.addEventListener('input', renderFuelLogs);
+    if (filterFuelVehicle) filterFuelVehicle.addEventListener('change', renderFuelLogs);
+    if (filterFuelType) filterFuelType.addEventListener('change', renderFuelLogs);
+}
+
+// ==========================================
+// Fuel Export
+// ==========================================
+function initFuelExport() {
+    const btnCSV = document.getElementById('btnExportFuelCSV');
+    const btnPDF = document.getElementById('btnExportFuelPDF');
+    if (btnCSV) btnCSV.addEventListener('click', exportFuelCSV);
+    if (btnPDF) btnPDF.addEventListener('click', exportFuelPDF);
+}
+
+function exportFuelCSV() {
+    const fuelLogs = DB.getFuelLogs();
+    const vehicles = DB.getVehicles();
+
+    if (fuelLogs.length === 0) {
+        showToast('ไม่มีข้อมูลน้ำมันสำหรับส่งออก', 'info');
+        return;
+    }
+
+    const headers = ['วันที่', 'รถ', 'ทะเบียน', 'ประเภทน้ำมัน', 'จำนวนลิตร', 'ราคาต่อลิตร(บาท)', 'ราคารวม(บาท)', 'เลขไมล์', 'เติมเต็มถัง', 'ชื่อปั๊ม', 'หมายเหตุ'];
+
+    const rows = fuelLogs.map(f => {
+        const v = vehicles.find(v => v.id === f.vehicleId);
+        const typeInfo = FUEL_TYPES[f.fuelType] || { label: f.fuelType || '-' };
+        return [
+            f.date,
+            v ? `${v.brand} ${v.model} ` : 'ไม่ทราบ',
+            v ? v.plate : '-',
+            typeInfo.label,
+            f.liters || 0,
+            f.pricePerLiter || 0,
+            f.totalCost || 0,
+            f.mileage || '',
+            f.fullTank ? 'ใช่' : 'ไม่',
+            f.station || '',
+            f.notes || ''
+        ];
+    });
+
+    let csvContent = '\uFEFF' + headers.join(',') + '\n';
+    rows.forEach(row => {
+        csvContent += row.map(cell => {
+            const str = String(cell).replace(/"/g, '""');
+            return `"${str}"`;
+        }).join(',') + '\n';
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `carcare_fuel_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    showToast('ส่งออกข้อมูลน้ำมันเป็น CSV สำเร็จ');
+}
+
+function exportFuelPDF() {
+    const allFuelLogs = DB.getFuelLogs();
+    const vehicles = DB.getVehicles();
+
+    if (allFuelLogs.length === 0) {
+        showToast('ไม่มีข้อมูลน้ำมันสำหรับส่งออก PDF', 'info');
+        return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;';
+
+    const vehicleOptions = vehicles.map(v => {
+        const count = allFuelLogs.filter(f => f.vehicleId === v.id).length;
+        return `<button class="pdf-vehicle-btn" data-id="${v.id}" style="width:100%;padding:12px 16px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-primary);color:var(--text-primary);cursor:pointer;text-align:left;font-family:inherit;font-size:0.95rem;transition:all 0.15s ease;display:flex;justify-content:space-between;align-items:center;">
+            <span><strong>${v.brand} ${v.model}</strong> <span style="color:var(--text-muted);font-size:0.85rem;">${v.plate || ''}</span></span>
+            <span style="color:var(--text-muted);font-size:0.8rem;">${count} รายการ</span>
+        </button>`;
+    }).join('');
+
+    overlay.innerHTML = `
+        <div style="background:var(--bg-secondary);border-radius:16px;padding:24px;width:90%;max-width:400px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <h3 style="margin:0 0 4px;font-size:1.1rem;color:var(--text-primary);">⛽ ส่งออกรายงานน้ำมัน PDF</h3>
+            <p style="margin:0 0 16px;font-size:0.85rem;color:var(--text-muted);">เลือกรถที่ต้องการออกรายงาน</p>
+            <button class="pdf-vehicle-btn" data-id="all" style="width:100%;padding:12px 16px;margin-bottom:12px;border:2px solid var(--accent-green);border-radius:10px;background:rgba(34,197,94,0.1);color:var(--accent-green);cursor:pointer;text-align:center;font-family:inherit;font-size:0.95rem;font-weight:600;transition:all 0.15s ease;">
+                ⛽ ออกรายงานทุกคัน (${allFuelLogs.length} รายการ)
+            </button>
+            <div style="height:1px;background:var(--border-color);margin-bottom:12px;"></div>
+            ${vehicleOptions}
+            <button id="fuelPdfCancelBtn" style="width:100%;padding:10px;margin-top:4px;border:1px solid var(--border-color);border-radius:10px;background:transparent;color:var(--text-muted);cursor:pointer;font-family:inherit;font-size:0.9rem;">ยกเลิก</button>
         </div>`;
+
+    document.body.appendChild(overlay);
+    overlay.querySelector('#fuelPdfCancelBtn').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    overlay.querySelectorAll('.pdf-vehicle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const selectedId = btn.dataset.id;
+            overlay.remove();
+            generateFuelPDF(selectedId);
+        });
+    });
+}
+
+function generateFuelPDF(vehicleId) {
+    const allFuelLogs = DB.getFuelLogs();
+    const allVehicles = DB.getVehicles();
+    const isAll = vehicleId === 'all';
+    const vehicles = isAll ? allVehicles : allVehicles.filter(v => v.id === vehicleId);
+    const fuelLogs = isAll ? allFuelLogs : allFuelLogs.filter(f => f.vehicleId === vehicleId);
+
+    if (fuelLogs.length === 0) {
+        showToast('ไม่มีข้อมูลน้ำมันสำหรับรถคันนี้', 'info');
+        return;
+    }
+
+    showToast('กำลังสร้าง PDF...', 'info');
+
+    const today = new Date();
+    const dateStr = `${today.getDate()} ${THAI_MONTHS_FULL[today.getMonth()]} ${today.getFullYear() + 543} `;
+    const totalCost = fuelLogs.reduce((sum, f) => sum + (f.totalCost || 0), 0);
+    const totalLiters = fuelLogs.reduce((sum, f) => sum + (f.liters || 0), 0);
+    const sortedLogs = [...fuelLogs].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const titleText = isAll ? 'รายงานน้ำมันทุกคัน' : `${vehicles[0].brand} ${vehicles[0].model} (${vehicles[0].plate || '-'})`;
+
+    // Vehicle summary cards
+    const vehicleCards = vehicles.map(v => {
+        const vLogs = fuelLogs.filter(f => f.vehicleId === v.id);
+        const vCost = vLogs.reduce((sum, f) => sum + (f.totalCost || 0), 0);
+        const vLiters = vLogs.reduce((sum, f) => sum + (f.liters || 0), 0);
+        const eff = calculateFuelEfficiency(v.id);
+        return `<div style = "background:#f0fdf4;border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:4px solid #22c55e;" >
+            <div style="font-weight:700;font-size:14px;color:#14532d;">${v.brand} ${v.model} ${v.year ? '(' + v.year + ')' : ''}</div>
+            <div style="font-size:12px;color:#64748b;margin-top:4px;">ทะเบียน: ${v.plate || '-'} | เติม ${vLogs.length} ครั้ง | ${vLiters.toFixed(1)} ล. | ฿${Number(vCost).toLocaleString('th-TH')}${eff ? ' | ' + eff + ' กม./ล.' : ''}</div>
+        </div> `;
+    }).join('');
+
+    // Fuel type summary
+    const typeCounts = {};
+    const typeCosts = {};
+    const typeLiters = {};
+    fuelLogs.forEach(f => {
+        const t = f.fuelType || 'other';
+        typeCounts[t] = (typeCounts[t] || 0) + 1;
+        typeCosts[t] = (typeCosts[t] || 0) + (f.totalCost || 0);
+        typeLiters[t] = (typeLiters[t] || 0) + (f.liters || 0);
+    });
+    const typeSummaryRows = Object.keys(typeCounts).map(t => {
+        const info = FUEL_TYPES[t] || { emoji: '⛽', label: t };
+        return `<tr>
+            <td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;">${info.emoji} ${info.label}</td>
+            <td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:center;font-size:12px;">${typeCounts[t]}</td>
+            <td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px;">${typeLiters[t].toFixed(1)} ล.</td>
+            <td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px;">฿${Number(typeCosts[t]).toLocaleString('th-TH')}</td>
+        </tr>`;
+    }).join('');
+
+    // Detail rows
+    const logRows = sortedLogs.map((f, i) => {
+        const v = vehicles.find(v => v.id === f.vehicleId);
+        const typeInfo = FUEL_TYPES[f.fuelType] || { emoji: '⛽', label: f.fuelType || '-' };
+        const bgColor = i % 2 === 0 ? '#ffffff' : '#f8fafc';
+        return `<tr style="background:${bgColor};">
+            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;white-space:nowrap;">${formatDate(f.date)}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${v ? v.plate : '-'}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${typeInfo.emoji} ${typeInfo.label}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;">${f.liters ? f.liters.toFixed(1) : '-'}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;">฿${f.pricePerLiter ? f.pricePerLiter.toFixed(2) : '-'}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${f.station || '-'}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;font-weight:600;">฿${Number(f.totalCost || 0).toLocaleString('th-TH')}</td>
+        </tr>`;
+    }).join('');
+
+    // Avg price per liter
+    const avgPrice = fuelLogs.length > 0 ? (fuelLogs.reduce((s, f) => s + (f.pricePerLiter || 0), 0) / fuelLogs.length).toFixed(2) : '-';
+
+    const html = `
+        <div style="font-family:'Noto Sans Thai','Inter',sans-serif;color:#1e293b;padding:0;width:100%;">
+        <div style="background:linear-gradient(135deg,#14532d,#166534);color:white;padding:28px 32px;border-radius:12px;margin-bottom:24px;">
+            <div style="font-size:24px;font-weight:800;">⛽ CarCare Pro — รายงานน้ำมัน</div>
+            <div style="font-size:13px;opacity:0.85;margin-top:4px;">${titleText}</div>
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.15);display:flex;gap:32px;flex-wrap:wrap;">
+                <div><div style="font-size:10px;opacity:0.6;">วันที่สร้างรายงาน</div><div style="font-size:14px;font-weight:600;">${dateStr}</div></div>
+                <div><div style="font-size:10px;opacity:0.6;">จำนวนครั้งเติม</div><div style="font-size:14px;font-weight:600;">${fuelLogs.length} ครั้ง</div></div>
+                <div><div style="font-size:10px;opacity:0.6;">ปริมาณรวม</div><div style="font-size:14px;font-weight:600;">${totalLiters.toFixed(1)} ลิตร</div></div>
+                <div><div style="font-size:10px;opacity:0.6;">ค่าน้ำมันรวม</div><div style="font-size:14px;font-weight:600;">฿${Number(totalCost).toLocaleString('th-TH')}</div></div>
+                <div><div style="font-size:10px;opacity:0.6;">ราคาเฉลี่ย/ลิตร</div><div style="font-size:14px;font-weight:600;">฿${avgPrice}</div></div>
+            </div>
+        </div>
+
+        <div style="margin-bottom:24px;">
+            <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#14532d;">🚗 ข้อมูลรถ</div>
+            ${vehicleCards}
+        </div>
+
+        <div style="margin-bottom:24px;">
+            <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#14532d;">📊 สรุปตามประเภทน้ำมัน</div>
+            <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;">
+                <thead><tr style="background:#166534;color:white;">
+                    <th style="padding:8px 12px;text-align:left;font-size:11px;">ประเภท</th>
+                    <th style="padding:8px 12px;text-align:center;font-size:11px;">จำนวนครั้ง</th>
+                    <th style="padding:8px 12px;text-align:right;font-size:11px;">ปริมาณ</th>
+                    <th style="padding:8px 12px;text-align:right;font-size:11px;">ค่าใช้จ่าย</th>
+                </tr></thead>
+                <tbody>${typeSummaryRows}</tbody>
+            </table>
+        </div>
+
+        <div style="margin-bottom:24px;">
+            <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#14532d;">⛽ รายการเติมน้ำมันทั้งหมด</div>
+            <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;">
+                <thead><tr style="background:#166534;color:white;">
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">วันที่</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">ทะเบียน</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">ประเภท</th>
+                    <th style="padding:8px 10px;text-align:right;font-size:11px;">ลิตร</th>
+                    <th style="padding:8px 10px;text-align:right;font-size:11px;">ราคา/ล.</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">ปั๊ม</th>
+                    <th style="padding:8px 10px;text-align:right;font-size:11px;">รวม</th>
+                </tr></thead>
+                <tbody>${logRows}</tbody>
+            </table>
+        </div>
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;">
+            สร้างโดย CarCare Pro — ${dateStr}
+        </div>
+    </div> `;
+
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = '794px';
+    document.body.appendChild(container);
+
+    const opt = {
+        margin: [10, 10, 10, 10],
+        filename: `CarCarePro_Fuel_${isAll ? 'All' : (vehicles[0].plate || vehicles[0].brand).replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    html2pdf().set(opt).from(container.firstElementChild).save()
+        .then(() => {
+            document.body.removeChild(container);
+            showToast('สร้าง PDF รายงานน้ำมันสำเร็จ');
+        })
+        .catch(err => {
+            document.body.removeChild(container);
+            console.error('Fuel PDF export error:', err);
+            showToast('เกิดข้อผิดพลาดในการสร้าง PDF', 'error');
+        });
+}
+
+// ==========================================
+// EV Charging - Constants
+// ==========================================
+const CHARGE_TYPES = {
+    ac_home: { emoji: '🏠', label: 'AC ชาร์จบ้าน', color: '#22c55e' },
+    ac_normal: { emoji: '🔌', label: 'AC ปกติ', color: '#3b82f6' },
+    dc_fast: { emoji: '⚡', label: 'DC เร็ว', color: '#f59e0b' }
+};
+
+const CHARGE_PROVIDERS = {
+    home: { label: '🏠 ชาร์จบ้าน' },
+    ea: { label: 'EA Anywhere' },
+    pea_volta: { label: 'PEA Volta' },
+    ptt_ev: { label: 'PTT EV Station' },
+    sharge: { label: 'Sharge' },
+    evolt: { label: 'EVolt' },
+    gpx: { label: 'GPX' },
+    tesla: { label: 'Tesla Supercharger' },
+    other: { label: 'อื่นๆ' }
+};
+
+// ==========================================
+// EV Charging - CRUD
+// ==========================================
+function initChargeForm() {
+    const btnAdd = document.getElementById('btnAddCharge');
+    const form = document.getElementById('chargeForm');
+    const kwhInput = document.getElementById('chargeKwh');
+    const priceInput = document.getElementById('chargePricePerKwh');
+    const totalInput = document.getElementById('chargeTotalCostInput');
+
+    if (btnAdd) btnAdd.addEventListener('click', () => {
+        resetChargeForm();
+        document.getElementById('chargeModalTitle').textContent = 'บันทึกการชาร์จ';
+        document.getElementById('chargeDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('chargeModal').classList.add('active');
+    });
+
+    // Auto-calc total cost
+    const calcTotal = () => {
+        const kwh = parseFloat(kwhInput?.value) || 0;
+        const price = parseFloat(priceInput?.value) || 0;
+        if (totalInput) totalInput.value = kwh && price ? (kwh * price).toFixed(2) : '';
+    };
+    if (kwhInput) kwhInput.addEventListener('input', calcTotal);
+    if (priceInput) priceInput.addEventListener('input', calcTotal);
+
+    if (form) form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveChargeLog();
+    });
+}
+
+function resetChargeForm() {
+    document.getElementById('chargeId').value = '';
+    document.getElementById('chargeForm').reset();
+    document.getElementById('chargeTotalCostInput').value = '';
+}
+
+function saveChargeLog() {
+    const id = document.getElementById('chargeId').value;
+    const log = {
+        id: id || generateId(),
+        vehicleId: document.getElementById('chargeVehicle').value,
+        date: document.getElementById('chargeDate').value,
+        chargeType: document.getElementById('chargeType').value,
+        provider: document.getElementById('chargeProvider').value,
+        kwh: parseFloat(document.getElementById('chargeKwh').value) || 0,
+        pricePerKwh: parseFloat(document.getElementById('chargePricePerKwh').value) || 0,
+        totalCost: parseFloat(document.getElementById('chargeTotalCostInput').value) || 0,
+        mileage: document.getElementById('chargeMileage').value ? parseInt(document.getElementById('chargeMileage').value) : null,
+        battStart: document.getElementById('chargeBattStart').value ? parseInt(document.getElementById('chargeBattStart').value) : null,
+        battEnd: document.getElementById('chargeBattEnd').value ? parseInt(document.getElementById('chargeBattEnd').value) : null,
+        station: document.getElementById('chargeStation').value.trim(),
+        notes: document.getElementById('chargeNotes').value.trim(),
+        createdAt: id ? undefined : new Date().toISOString()
+    };
+
+    const logs = DB.getChargeLogs();
+    if (id) {
+        const idx = logs.findIndex(l => l.id === id);
+        if (idx !== -1) { log.createdAt = logs[idx].createdAt; logs[idx] = log; }
+    } else {
+        logs.push(log);
+    }
+    DB.saveChargeLogs(logs);
+
+    // Update vehicle mileage
+    if (log.mileage) {
+        const vehicles = DB.getVehicles();
+        const v = vehicles.find(v => v.id === log.vehicleId);
+        if (v && (!v.currentMileage || log.mileage > v.currentMileage)) {
+            v.currentMileage = log.mileage;
+            DB.saveVehicles(vehicles);
+        }
+    }
+
+    document.getElementById('chargeModal').classList.remove('active');
+    renderChargeLogs();
+    showToast(id ? 'แก้ไขข้อมูลการชาร์จสำเร็จ' : 'บันทึกการชาร์จสำเร็จ');
+}
+
+function editChargeLog(id) {
+    const log = DB.getChargeLogs().find(l => l.id === id);
+    if (!log) return;
+    document.getElementById('chargeId').value = log.id;
+    document.getElementById('chargeVehicle').value = log.vehicleId;
+    document.getElementById('chargeDate').value = log.date;
+    document.getElementById('chargeType').value = log.chargeType;
+    document.getElementById('chargeProvider').value = log.provider || '';
+    document.getElementById('chargeKwh').value = log.kwh;
+    document.getElementById('chargePricePerKwh').value = log.pricePerKwh;
+    document.getElementById('chargeTotalCostInput').value = log.totalCost;
+    document.getElementById('chargeMileage').value = log.mileage || '';
+    document.getElementById('chargeBattStart').value = log.battStart ?? '';
+    document.getElementById('chargeBattEnd').value = log.battEnd ?? '';
+    document.getElementById('chargeStation').value = log.station || '';
+    document.getElementById('chargeNotes').value = log.notes || '';
+    document.getElementById('chargeModalTitle').textContent = 'แก้ไขการชาร์จ';
+    document.getElementById('chargeModal').classList.add('active');
+}
+
+function deleteChargeLog(id) {
+    deleteTarget = { type: 'charge', id };
+    document.getElementById('deleteMessage').textContent = 'คุณต้องการลบบันทึกการชาร์จนี้หรือไม่?';
+    openModal('deleteModal');
+}
+
+// ==========================================
+// EV Charging - Render
+// ==========================================
+function renderChargeLogs() {
+    const logs = DB.getChargeLogs();
+    const vehicles = DB.getVehicles();
+
+    // Stats
+    const totalCount = logs.length;
+    const totalCost = logs.reduce((s, l) => s + (l.totalCost || 0), 0);
+    const totalKwh = logs.reduce((s, l) => s + (l.kwh || 0), 0);
+    document.getElementById('chargeTotalCount').textContent = totalCount;
+    document.getElementById('chargeTotalCost').textContent = formatCurrency(totalCost);
+    document.getElementById('chargeTotalKwh').textContent = `${totalKwh.toFixed(1)} kWh`;
+
+    // Efficiency: km/kWh from consecutive charges with mileage
+    const sorted = [...logs].filter(l => l.mileage && l.kwh).sort((a, b) => new Date(a.date) - new Date(b.date));
+    let totalKm = 0, totalKwhUsed = 0;
+    for (let i = 1; i < sorted.length; i++) {
+        const km = Number(sorted[i].mileage) - Number(sorted[i - 1].mileage);
+        if (km > 0) { totalKm += km; totalKwhUsed += sorted[i].kwh; }
+    }
+    const eff = totalKwhUsed > 0 ? (totalKm / totalKwhUsed).toFixed(2) : '-';
+    document.getElementById('chargeEfficiency').textContent = eff !== '-' ? `${eff} กม./ kWh` : '-';
+
+    // Filters
+    const searchVal = document.getElementById('searchCharge')?.value?.toLowerCase() || '';
+    const filterVehicle = document.getElementById('filterChargeVehicle')?.value || '';
+    const filterType = document.getElementById('filterChargeType')?.value || '';
+
+    const filtered = logs
+        .filter(l => !searchVal || (l.station || '').toLowerCase().includes(searchVal) || (l.notes || '').toLowerCase().includes(searchVal))
+        .filter(l => !filterVehicle || l.vehicleId === filterVehicle)
+        .filter(l => !filterType || l.chargeType === filterType)
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const container = document.getElementById('chargeLogsList');
+    if (!container) return;
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state-large" >
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" opacity="0.3">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                </svg>
+                <h3>${searchVal || filterVehicle || filterType ? 'ไม่พบข้อมูลที่ตรงกับตัวกรอง' : 'ยังไม่มีบันทึกการชาร์จ'}</h3>
+                <p>${searchVal || filterVehicle || filterType ? 'ลองเปลี่ยนเงื่อนไขการค้นหา' : 'เพิ่มบันทึกการชาร์จครั้งแรกของคุณ'}</p>
+            </div> `;
+        renderChargeAnalytics();
+        return;
+    }
+
+    container.innerHTML = filtered.map(l => {
+        const typeInfo = CHARGE_TYPES[l.chargeType] || { emoji: '⚡', label: l.chargeType || 'ไม่ระบุ', color: '#94a3b8' };
+        const providerInfo = CHARGE_PROVIDERS[l.provider] || { label: l.provider || '' };
+        const vehicleLabel = getVehicleShort(l.vehicleId);
+        const battInfo = (l.battStart !== null && l.battEnd !== null) ? `${l.battStart}% → ${l.battEnd}% ` : '';
+
+        return `
+            <div class="record-item fuel-item" >
+                <div class="record-type-icon" style="background:${typeInfo.color}22;color:${typeInfo.color}">
+                    ${typeInfo.emoji}
+                </div>
+                <div class="record-info">
+                    <div class="record-title">${l.kwh.toFixed(1)} kWh — ${vehicleLabel}</div>
+                    <div class="record-meta">${formatDate(l.date)} ${l.station ? '• ' + l.station : ''} ${providerInfo.label ? '• ' + providerInfo.label : ''}</div>
+                    <div class="fuel-price-detail">฿${l.pricePerKwh?.toFixed(2) || '-'}/kWh ${battInfo ? '• ' + battInfo : ''}</div>
+                </div>
+                <div class="record-cost">${formatCurrency(l.totalCost)}</div>
+                <div class="record-actions">
+                    <button class="btn-icon" onclick="editChargeLog('${l.id}')" title="แก้ไข">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button class="btn-icon btn-icon-danger" onclick="deleteChargeLog('${l.id}')" title="ลบ">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                </div>
+            </div> `;
+    }).join('');
+
+    renderChargeAnalytics();
+}
+
+function initChargeFilters() {
+    const search = document.getElementById('searchCharge');
+    const filterVehicle = document.getElementById('filterChargeVehicle');
+    const filterType = document.getElementById('filterChargeType');
+    if (search) search.addEventListener('input', renderChargeLogs);
+    if (filterVehicle) filterVehicle.addEventListener('change', renderChargeLogs);
+    if (filterType) filterType.addEventListener('change', renderChargeLogs);
+}
+
+// ==========================================
+// EV Charging - Analytics
+// ==========================================
+function renderChargeAnalytics() {
+    const logs = DB.getChargeLogs();
+    renderChargeMonthlyChart(logs);
+    renderChargeTypeChart(logs);
+    renderChargeEfficiencyChart(logs);
+    renderChargeVehicleChart(logs);
+    renderChargePriceChart(logs);
+}
+
+function renderChargeMonthlyChart(logs) {
+    const container = document.getElementById('chargeMonthlyChartContainer');
+    if (!container) return;
+    const years = [...new Set(logs.map(l => new Date(l.date).getFullYear()))].sort((a, b) => b - a);
+    const yearSelect = document.getElementById('chargeAnalyticsYear');
+    const currentYear = new Date().getFullYear();
+    if (yearSelect) {
+        yearSelect.innerHTML = '';
+        if (years.length === 0) years.push(currentYear);
+        years.forEach(y => { const o = document.createElement('option'); o.value = y; o.textContent = `ปี ${y + 543} `; yearSelect.appendChild(o); });
+        yearSelect.onchange = () => renderChargeAnalytics();
+    }
+    const selectedYear = parseInt(yearSelect?.value) || currentYear;
+    const monthlyData = new Array(12).fill(0);
+    logs.forEach(l => { const d = new Date(l.date); if (d.getFullYear() === selectedYear) monthlyData[d.getMonth()] += l.totalCost || 0; });
+    const maxVal = Math.max(...monthlyData, 1);
+    if (logs.length === 0) { container.innerHTML = '<div class="no-data-chart"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg><span>ยังไม่มีข้อมูล</span></div>'; return; }
+    container.innerHTML = `<div class="bar-chart" > ${monthlyData.map((val, i) => { const h = Math.max((val / maxVal) * 100, val > 0 ? 3 : 0.5); return `<div class="bar-col"><span class="bar-value">${val > 0 ? formatCurrency(val) : ''}</span><div class="bar charge-bar" style="height:${h}%" title="${THAI_MONTHS_FULL[i]}: ${formatCurrency(val)}"></div><span class="bar-label">${THAI_MONTHS[i]}</span></div>`; }).join('')}</div> `;
+}
+
+function renderChargeTypeChart(logs) {
+    const container = document.getElementById('chargeTypeChartContainer');
+    if (!container) return;
+    if (logs.length === 0) { container.innerHTML = '<div class="no-data-chart"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 0 20"/></svg><span>ยังไม่มีข้อมูล</span></div>'; return; }
+    const typeData = {};
+    logs.forEach(l => { const t = l.chargeType || 'dc_fast'; typeData[t] = (typeData[t] || 0) + (l.totalCost || 0); });
+    const sorted = Object.entries(typeData).sort((a, b) => b[1] - a[1]);
+    const total = sorted.reduce((s, [, v]) => s + v, 0);
+    let acc = 0; const stops = [];
+    sorted.forEach(([t, v]) => { const c = (CHARGE_TYPES[t] || { color: '#94a3b8' }).color; const s = acc; acc += (v / total) * 360; stops.push(`${c} ${s}deg ${acc} deg`); });
+    container.innerHTML = `<div class="donut-chart-wrapper" ><div class="donut-chart" style="background:conic-gradient(${stops.join(',')})"><div class="donut-center"><span class="total-label">ทั้งหมด</span><span class="total-value">${formatCurrency(total)}</span></div></div><div class="donut-legend">${sorted.map(([t, v]) => { const ti = CHARGE_TYPES[t] || { emoji: '⚡', label: t, color: '#94a3b8' }; return `<div class="legend-item"><div class="legend-dot" style="background:${ti.color}"></div><span class="legend-label">${ti.emoji} ${ti.label}</span><span class="legend-value">${formatCurrency(v)} (${((v / total) * 100).toFixed(1)}%)</span></div>`; }).join('')}</div></div> `;
+}
+
+function renderChargeEfficiencyChart(logs) {
+    const container = document.getElementById('chargeEfficiencyChartContainer');
+    if (!container) return;
+    const valid = logs.filter(l => l.mileage && l.kwh).sort((a, b) => new Date(a.date) - new Date(b.date));
+    if (valid.length < 2) { container.innerHTML = '<div class="no-data-chart"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>ต้องมีข้อมูลชาร์จพร้อมเลขไมล์อย่างน้อย 2 ครั้ง</span></div>'; return; }
+    const pts = [];
+    for (let i = 1; i < valid.length; i++) { const km = Number(valid[i].mileage) - Number(valid[i - 1].mileage); if (km > 0 && valid[i].kwh > 0) pts.push({ date: valid[i].date, eff: parseFloat((km / valid[i].kwh).toFixed(2)), vehicle: getVehicleShort(valid[i].vehicleId) }); }
+    if (pts.length === 0) { container.innerHTML = '<div class="no-data-chart"><span>ไม่สามารถคำนวณได้</span></div>'; return; }
+    const maxE = Math.max(...pts.map(p => p.eff), 1), minE = Math.min(...pts.map(p => p.eff)), range = maxE - minE || 1;
+    container.innerHTML = `<div class="line-chart-wrapper" ><div class="line-chart-area">${pts.map((p, i) => { const x = pts.length === 1 ? 50 : (i / (pts.length - 1)) * 100; const y = 100 - ((p.eff - minE) / range) * 80 - 10; return `<div class="line-point" style="left:${x}%;top:${y}%" title="${formatDate(p.date)}: ${p.eff} กม./kWh"><div class="line-point-dot"></div><div class="line-point-label">${p.eff}</div></div>`; }).join('')}<svg class="line-chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline fill="none" stroke="var(--accent-blue)" stroke-width="0.8" points="${pts.map((p, i) => { const x = pts.length === 1 ? 50 : (i / (pts.length - 1)) * 100; const y = 100 - ((p.eff - minE) / range) * 80 - 10; return `${x},${y}`; }).join(' ')}"/></svg></div><div class="line-chart-labels">${pts.length <= 8 ? pts.map(p => `<span>${formatDate(p.date).split(' ').slice(0, 2).join(' ')}</span>`).join('') : [pts[0], pts[Math.floor(pts.length / 2)], pts[pts.length - 1]].map(p => `<span>${formatDate(p.date).split(' ').slice(0, 2).join(' ')}</span>`).join('')}</div></div> `;
+}
+
+function renderChargeVehicleChart(logs) {
+    const container = document.getElementById('chargeVehicleChartContainer');
+    if (!container) return;
+    if (logs.length === 0) { container.innerHTML = '<div class="no-data-chart"><span>ยังไม่มีข้อมูล</span></div>'; return; }
+    const data = {};
+    logs.forEach(l => { data[l.vehicleId] = (data[l.vehicleId] || 0) + (l.totalCost || 0); });
+    const sorted = Object.entries(data).map(([id, cost]) => ({ id, cost, label: getVehicleLabel(id) })).sort((a, b) => b.cost - a.cost);
+    const max = Math.max(...sorted.map(s => s.cost), 1);
+    const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', '#ec4899'];
+    container.innerHTML = `<div class="h-bar-chart" > ${sorted.map((item, i) => `<div class="h-bar-row"><span class="h-bar-label">${item.label}</span><div class="h-bar-track"><div class="h-bar-fill" style="width:${Math.max((item.cost / max) * 100, 8)}%;background:linear-gradient(90deg,${colors[i % colors.length]},${colors[i % colors.length]}88)"><span>${formatCurrency(item.cost)}</span></div></div></div>`).join('')}</div> `;
+}
+
+function renderChargePriceChart(logs) {
+    const container = document.getElementById('chargePriceChartContainer');
+    if (!container) return;
+    const byMonth = {};
+    logs.forEach(l => { if (!l.pricePerKwh || !l.date) return; const d = new Date(l.date); const k = `${d.getFullYear()} -${String(d.getMonth() + 1).padStart(2, '0')} `; if (!byMonth[k]) byMonth[k] = { total: 0, count: 0 }; byMonth[k].total += l.pricePerKwh; byMonth[k].count++; });
+    const sorted = Object.entries(byMonth).sort(([a], [b]) => a.localeCompare(b)).map(([k, d]) => ({ month: k, avg: parseFloat((d.total / d.count).toFixed(2)), label: (() => { const [y, m] = k.split('-'); return `${THAI_MONTHS[parseInt(m) - 1]} ${(parseInt(y) + 543).toString().slice(-2)} `; })() }));
+    if (sorted.length === 0) { container.innerHTML = '<div class="no-data-chart"><span>ยังไม่มีข้อมูลราคาค่าไฟ</span></div>'; return; }
+    const maxP = Math.max(...sorted.map(s => s.avg), 1), minP = Math.min(...sorted.map(s => s.avg)), range = maxP - minP || 1;
+    container.innerHTML = `<div class="line-chart-wrapper" ><div class="line-chart-area">${sorted.map((p, i) => { const x = sorted.length === 1 ? 50 : (i / (sorted.length - 1)) * 100; const y = 100 - ((p.avg - minP) / range) * 80 - 10; return `<div class="line-point" style="left:${x}%;top:${y}%" title="${p.label}: ฿${p.avg}/kWh"><div class="line-point-dot price-dot"></div><div class="line-point-label">฿${p.avg}</div></div>`; }).join('')}<svg class="line-chart-svg" viewBox="0 0 100 100" preserveAspectRatio="none"><polyline fill="none" stroke="var(--accent-orange)" stroke-width="0.8" points="${sorted.map((p, i) => { const x = sorted.length === 1 ? 50 : (i / (sorted.length - 1)) * 100; const y = 100 - ((p.avg - minP) / range) * 80 - 10; return `${x},${y}`; }).join(' ')}"/></svg></div><div class="line-chart-labels">${sorted.map(p => `<span>${p.label}</span>`).join('')}</div></div> `;
+}
+
+// ==========================================
+// EV Charging - Export
+// ==========================================
+function initChargeExport() {
+    const btnCSV = document.getElementById('btnExportChargeCSV');
+    const btnPDF = document.getElementById('btnExportChargePDF');
+    if (btnCSV) btnCSV.addEventListener('click', exportChargeCSV);
+    if (btnPDF) btnPDF.addEventListener('click', exportChargePDF);
+}
+
+function exportChargeCSV() {
+    const logs = DB.getChargeLogs();
+    const vehicles = DB.getVehicles();
+    if (logs.length === 0) { showToast('ไม่มีข้อมูลชาร์จสำหรับส่งออก', 'info'); return; }
+    const headers = ['วันที่', 'รถ', 'ทะเบียน', 'ประเภทชาร์จ', 'ผู้ให้บริการ', 'พลังงาน(kWh)', 'ค่าไฟ(บาท/kWh)', 'ราคารวม(บาท)', 'เลขไมล์', '%แบตเริ่ม', '%แบตจบ', 'สถานี', 'หมายเหตุ'];
+    const rows = logs.map(l => {
+        const v = vehicles.find(v => v.id === l.vehicleId);
+        return [l.date, v ? `${v.brand} ${v.model} ` : '-', v ? v.plate : '-', (CHARGE_TYPES[l.chargeType] || {}).label || '-', (CHARGE_PROVIDERS[l.provider] || {}).label || '-', l.kwh || 0, l.pricePerKwh || 0, l.totalCost || 0, l.mileage || '', l.battStart ?? '', l.battEnd ?? '', l.station || '', l.notes || ''];
+    });
+    let csv = '\uFEFF' + headers.join(',') + '\n';
+    rows.forEach(r => {
+        csv += r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',') + '\n';
+    });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `carcare_charge_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    showToast('ส่งออกข้อมูลชาร์จเป็น CSV สำเร็จ');
+}
+
+function exportChargePDF() {
+    const allLogs = DB.getChargeLogs();
+    const vehicles = DB.getVehicles();
+    if (allLogs.length === 0) { showToast('ไม่มีข้อมูลชาร์จสำหรับส่งออก PDF', 'info'); return; }
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;';
+    const opts = vehicles.map(v => { const c = allLogs.filter(l => l.vehicleId === v.id).length; return `<button class="pdf-vehicle-btn" data-id="${v.id}" style="width:100%;padding:12px 16px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-primary);color:var(--text-primary);cursor:pointer;text-align:left;font-family:inherit;font-size:0.95rem;display:flex;justify-content:space-between;align-items:center;"><span><strong>${v.brand} ${v.model}</strong> <span style="color:var(--text-muted);font-size:0.85rem;">${v.plate || ''}</span></span><span style="color:var(--text-muted);font-size:0.8rem;">${c} รายการ</span></button>`; }).join('');
+    overlay.innerHTML = `<div style="background:var(--bg-secondary);border-radius:16px;padding:24px;width:90%;max-width:400px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);"><h3 style="margin:0 0 4px;font-size:1.1rem;color:var(--text-primary);">⚡ ส่งออกรายงานชาร์จ PDF</h3><p style="margin:0 0 16px;font-size:0.85rem;color:var(--text-muted);">เลือกรถที่ต้องการออกรายงาน</p><button class="pdf-vehicle-btn" data-id="all" style="width:100%;padding:12px 16px;margin-bottom:12px;border:2px solid var(--accent-blue);border-radius:10px;background:rgba(59,130,246,0.1);color:var(--accent-blue);cursor:pointer;text-align:center;font-family:inherit;font-size:0.95rem;font-weight:600;">⚡ ออกรายงานทุกคัน (${allLogs.length} รายการ)</button><div style="height:1px;background:var(--border-color);margin-bottom:12px;"></div>${opts}<button id="chargePdfCancelBtn" style="width:100%;padding:10px;margin-top:4px;border:1px solid var(--border-color);border-radius:10px;background:transparent;color:var(--text-muted);cursor:pointer;font-family:inherit;font-size:0.9rem;">ยกเลิก</button></div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector('#chargePdfCancelBtn').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelectorAll('.pdf-vehicle-btn').forEach(btn => { btn.addEventListener('click', () => { overlay.remove(); generateChargePDF(btn.dataset.id); }); });
+}
+
+function generateChargePDF(vehicleId) {
+    const allLogs = DB.getChargeLogs(); const allVehicles = DB.getVehicles();
+    const isAll = vehicleId === 'all';
+    const vehicles = isAll ? allVehicles : allVehicles.filter(v => v.id === vehicleId);
+    const logs = isAll ? allLogs : allLogs.filter(l => l.vehicleId === vehicleId);
+    if (logs.length === 0) { showToast('ไม่มีข้อมูลชาร์จสำหรับรถคันนี้', 'info'); return; }
+    showToast('กำลังสร้าง PDF...', 'info');
+    const today = new Date();
+    const dateStr = `${today.getDate()} ${THAI_MONTHS_FULL[today.getMonth()]} ${today.getFullYear() + 543}`;
+    const totalCost = logs.reduce((s, l) => s + (l.totalCost || 0), 0);
+    const totalKwh = logs.reduce((s, l) => s + (l.kwh || 0), 0);
+    const avgPrice = logs.length > 0 ? (logs.reduce((s, l) => s + (l.pricePerKwh || 0), 0) / logs.length).toFixed(2) : '-';
+    const sortedLogs = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const title = isAll ? 'รายงานชาร์จทุกคัน' : `${vehicles[0].brand} ${vehicles[0].model} (${vehicles[0].plate || '-'})`;
+    const vCards = vehicles.map(v => { const vL = logs.filter(l => l.vehicleId === v.id); const vC = vL.reduce((s, l) => s + (l.totalCost || 0), 0); const vK = vL.reduce((s, l) => s + (l.kwh || 0), 0); return `<div style="background:#eff6ff;border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:4px solid #3b82f6;"><div style="font-weight:700;font-size:14px;color:#1e3a5f;">${v.brand} ${v.model} ${v.year ? '(' + v.year + ')' : ''}</div><div style="font-size:12px;color:#64748b;margin-top:4px;">ทะเบียน: ${v.plate || '-'} | ชาร์จ ${vL.length} ครั้ง | ${vK.toFixed(1)} kWh | ฿${Number(vC).toLocaleString('th-TH')}</div></div>`; }).join('');
+    const typeData = {}; const typeCosts = {}; const typeKwh = {};
+    logs.forEach(l => { const t = l.chargeType || 'dc_fast'; typeData[t] = (typeData[t] || 0) + 1; typeCosts[t] = (typeCosts[t] || 0) + (l.totalCost || 0); typeKwh[t] = (typeKwh[t] || 0) + (l.kwh || 0); });
+    const typeSumRows = Object.keys(typeData).map(t => { const ti = CHARGE_TYPES[t] || { emoji: '⚡', label: t }; return `<tr><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;">${ti.emoji} ${ti.label}</td><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:center;font-size:12px;">${typeData[t]}</td><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px;">${typeKwh[t].toFixed(1)} kWh</td><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px;">฿${Number(typeCosts[t]).toLocaleString('th-TH')}</td></tr>`; }).join('');
+    const rows = sortedLogs.map((l, i) => { const v = vehicles.find(v => v.id === l.vehicleId); const ti = CHARGE_TYPES[l.chargeType] || { emoji: '⚡', label: '-' }; const bg = i % 2 === 0 ? '#ffffff' : '#f8fafc'; return `<tr style="background:${bg};"><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;white-space:nowrap;">${formatDate(l.date)}</td><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${v ? v.plate : '-'}</td><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${ti.emoji} ${ti.label}</td><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;">${l.kwh?.toFixed(1) || '-'}</td><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;">฿${l.pricePerKwh?.toFixed(2) || '-'}</td><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${l.station || '-'}</td><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;font-weight:600;">฿${Number(l.totalCost || 0).toLocaleString('th-TH')}</td></tr>`; }).join('');
+    const html = `<div style="font-family:'Noto Sans Thai','Inter',sans-serif;color:#1e293b;padding:0;width:100%;"><div style="background:linear-gradient(135deg,#0f172a,#1e40af);color:white;padding:28px 32px;border-radius:12px;margin-bottom:24px;"><div style="font-size:24px;font-weight:800;">⚡ CarCare Pro — รายงานการชาร์จ</div><div style="font-size:13px;opacity:0.85;margin-top:4px;">${title}</div><div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.15);display:flex;gap:32px;flex-wrap:wrap;"><div><div style="font-size:10px;opacity:0.6;">วันที่สร้าง</div><div style="font-size:14px;font-weight:600;">${dateStr}</div></div><div><div style="font-size:10px;opacity:0.6;">จำนวนครั้ง</div><div style="font-size:14px;font-weight:600;">${logs.length} ครั้ง</div></div><div><div style="font-size:10px;opacity:0.6;">พลังงานรวม</div><div style="font-size:14px;font-weight:600;">${totalKwh.toFixed(1)} kWh</div></div><div><div style="font-size:10px;opacity:0.6;">ค่าชาร์จรวม</div><div style="font-size:14px;font-weight:600;">฿${Number(totalCost).toLocaleString('th-TH')}</div></div><div><div style="font-size:10px;opacity:0.6;">ราคาเฉลี่ย/kWh</div><div style="font-size:14px;font-weight:600;">฿${avgPrice}</div></div></div></div><div style="margin-bottom:24px;"><div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#1e40af;">🚗 ข้อมูลรถ</div>${vCards}</div><div style="margin-bottom:24px;"><div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#1e40af;">📊 สรุปตามประเภทชาร์จ</div><table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;"><thead><tr style="background:#1e40af;color:white;"><th style="padding:8px 12px;text-align:left;font-size:11px;">ประเภท</th><th style="padding:8px 12px;text-align:center;font-size:11px;">จำนวน</th><th style="padding:8px 12px;text-align:right;font-size:11px;">พลังงาน</th><th style="padding:8px 12px;text-align:right;font-size:11px;">ค่าใช้จ่าย</th></tr></thead><tbody>${typeSumRows}</tbody></table></div><div style="margin-bottom:24px;"><div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#1e40af;">⚡ รายการชาร์จทั้งหมด</div><table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;"><thead><tr style="background:#1e40af;color:white;"><th style="padding:8px 10px;text-align:left;font-size:11px;">วันที่</th><th style="padding:8px 10px;text-align:left;font-size:11px;">ทะเบียน</th><th style="padding:8px 10px;text-align:left;font-size:11px;">ประเภท</th><th style="padding:8px 10px;text-align:right;font-size:11px;">kWh</th><th style="padding:8px 10px;text-align:right;font-size:11px;">฿/kWh</th><th style="padding:8px 10px;text-align:left;font-size:11px;">สถานี</th><th style="padding:8px 10px;text-align:right;font-size:11px;">รวม</th></tr></thead><tbody>${rows}</tbody></table></div><div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;">สร้างโดย CarCare Pro — ${dateStr}</div></div>`;
+    const el = document.createElement('div'); el.innerHTML = html; el.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;'; document.body.appendChild(el);
+    html2pdf().set({ margin: [10, 10, 10, 10], filename: `CarCarePro_Charge_${isAll ? 'All' : (vehicles[0].plate || vehicles[0].brand).replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } }).from(el.firstElementChild).save().then(() => { document.body.removeChild(el); showToast('สร้าง PDF รายงานชาร์จสำเร็จ'); }).catch(err => { document.body.removeChild(el); console.error('Charge PDF error:', err); showToast('เกิดข้อผิดพลาดในการสร้าง PDF', 'error'); });
 }
 
 // ==========================================
@@ -1962,7 +3290,13 @@ function init() {
     initModals();
     initVehicleForm();
     initRecordForm();
+    initFuelForm();
     initFilters();
+    initFuelFilters();
+    initFuelExport();
+    initChargeForm();
+    initChargeFilters();
+    initChargeExport();
     initExport();
     initDeleteConfirm();
     initSettings();
@@ -2017,6 +3351,26 @@ deleteVehicle = function (id) {
 const _origDeleteRecord = deleteRecord;
 deleteRecord = function (id) {
     _origDeleteRecord(id);
+    resetDeletePinInputs();
+    setTimeout(() => {
+        const first = document.querySelector('#deleteModal .pin-confirm-digit[data-idx="0"]');
+        if (first) first.focus();
+    }, 300);
+};
+
+const _origDeleteFuelLog = deleteFuelLog;
+deleteFuelLog = function (id) {
+    _origDeleteFuelLog(id);
+    resetDeletePinInputs();
+    setTimeout(() => {
+        const first = document.querySelector('#deleteModal .pin-confirm-digit[data-idx="0"]');
+        if (first) first.focus();
+    }, 300);
+};
+
+const _origDeleteChargeLog = deleteChargeLog;
+deleteChargeLog = function (id) {
+    _origDeleteChargeLog(id);
     resetDeletePinInputs();
     setTimeout(() => {
         const first = document.querySelector('#deleteModal .pin-confirm-digit[data-idx="0"]');
