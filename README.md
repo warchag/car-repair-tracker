@@ -83,6 +83,15 @@ cd car-repair-tracker
 
 ---
 
+## 🔒 ความปลอดภัยและสิทธิส่วนบุคคล (Security & Privacy)
+
+**คำถามที่พบบ่อย: การนำ `apiKey` ขึ้น GitHub ปลอดภัยหรือไม่?**
+- **คำตอบคือ ปลอดภัยครับ:** โดยปกติแล้ว `apiKey` ของ Firebase Web SDK ไม่ใช่ความลับ (Secret) ที่ต้องซ่อน แต่เป็นเพียง ID สำหรับระบุโปรเจกต์ ซึ่งข้อมูลฝั่ง Client-side ส่วนใหญ่จะเป็นแบบนี้อยู่แล้ว
+- **สิ่งที่ปกป้องข้อมูลจริงๆ คือ [Firestore Security Rules](file:///Users/worracag/Desktop/Work/car-repair-tracker/firestore.rules):** โปรเจกต์นี้ถูกตั้งค่าให้ **"เฉพาะเจ้าของข้อมูลที่ Login เท่านั้น"** ถึงจะสามารถอ่านและแก้ไขข้อมูลของตัวเองได้ (request.auth.uid == userId)
+- **ข้อควรระวัง:** ไม่ควรนำไฟล์ Service Account JSON (ฝั่ง Server-side) ขึ้น GitHub โดยเด็ดขาด (แต่ในโปรเจกต์นี้ไม่ได้ใช้ครับ)
+
+---
+
 ## 🎨 การออกแบบ (UX / UI Design)
 - **Modern Dark Theme & Light Mode Toggle:** ออกแบบมาเพื่อคนรักการทำงานตอนกลางคืน สลับธีมเป็นโหมดสว่างได้ทันที
 - **Progressive Web App (PWA):** สามารถกด Add to Home Screen เพื่อติดตั้งไว้ใช้งานบนมือถือ (iOS/Android) ใช้งานเหมือนแอป Native ทั่วไป
