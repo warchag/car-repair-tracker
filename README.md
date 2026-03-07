@@ -83,9 +83,6 @@ cd car-repair-tracker
 
 ---
 
-
----
-
 ## 🎨 การออกแบบ (UX / UI Design)
 - **Modern Dark Theme & Light Mode Toggle:** ออกแบบมาเพื่อคนรักการทำงานตอนกลางคืน สลับธีมเป็นโหมดสว่างได้ทันที
 - **Progressive Web App (PWA):** สามารถกด Add to Home Screen เพื่อติดตั้งไว้ใช้งานบนมือถือ (iOS/Android) ใช้งานเหมือนแอป Native ทั่วไป
