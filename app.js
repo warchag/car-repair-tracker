@@ -206,6 +206,15 @@ function hashPin(pin) {
 // ==========================================
 // Helpers
 // ==========================================
+function escapeHTML(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
 const REPAIR_TYPES = {
     engine: { emoji: '🔧', label: 'เครื่องยนต์', color: '#ef4444' },
     brake: { emoji: '🛑', label: 'เบรก', color: '#f97316' },
@@ -277,14 +286,14 @@ function getVehicleLabel(vehicleId) {
     const vehicles = DB.getVehicles();
     const v = vehicles.find(v => v.id === vehicleId);
     if (!v) return 'ไม่ทราบ';
-    return `${v.brand} ${v.model} (${v.plate})`;
+    return `${escapeHTML(v.brand)} ${escapeHTML(v.model)} (${escapeHTML(v.plate)})`;
 }
 
 function getVehicleShort(vehicleId) {
     const vehicles = DB.getVehicles();
     const v = vehicles.find(v => v.id === vehicleId);
     if (!v) return 'ไม่ทราบ';
-    return `${v.brand} ${v.model}`;
+    return `${escapeHTML(v.brand)} ${escapeHTML(v.model)}`;
 }
 
 // ==========================================
@@ -990,7 +999,7 @@ function renderDashboard() {
             emoji: fuelInfo.emoji,
             title: `เติม${fuelInfo.label}`,
             badge: '<span class="activity-type-badge fuel">เติมน้ำมัน</span>',
-            meta: `🚗 ${getVehicleShort(f.vehicleId)} · ${f.liters ? f.liters + ' ลิตร' : ''} ${f.station ? '· ⛽ ' + f.station : ''}`,
+            meta: `🚗 ${getVehicleShort(f.vehicleId)} · ${f.liters ? f.liters + ' ลิตร' : ''} ${f.station ? '· ⛽ ' + escapeHTML(f.station) : ''}`,
             cost: f.totalCost || 0,
             accentColor: '#f59e0b'
         });
@@ -1005,7 +1014,7 @@ function renderDashboard() {
             emoji: chargeInfo.emoji || '⚡',
             title: `ชาร์จ ${chargeInfo.label || 'EV'}`,
             badge: '<span class="activity-type-badge charge">ชาร์จไฟ</span>',
-            meta: `🚗 ${getVehicleShort(c.vehicleId)} · ${c.kwh ? c.kwh + ' kWh' : ''} ${c.provider ? '· 🔌 ' + c.provider : ''}`,
+            meta: `🚗 ${getVehicleShort(c.vehicleId)} · ${c.kwh ? c.kwh + ' kWh' : ''} ${c.provider ? '· 🔌 ' + escapeHTML(c.provider) : ''}`,
             cost: c.totalCost || 0,
             accentColor: '#3b82f6'
         });
@@ -1069,7 +1078,7 @@ function renderDashboard() {
                     </div>
                     <div class="upcoming-info">
                         <div class="title">${getVehicleShort(r.vehicleId)}</div>
-                        <div class="subtitle">${(REPAIR_TYPES[r.type] || REPAIR_TYPES.other).label} - ${r.shop || '-'}</div>
+                        <div class="subtitle">${(REPAIR_TYPES[r.type] || REPAIR_TYPES.other).label} - ${escapeHTML(r.shop || '-')}</div>
                     </div>
                     <span class="upcoming-days-left ${isOverdue ? 'overdue' : ''}">${daysText}</span>
                 </div>`;
@@ -1100,7 +1109,7 @@ function renderVehicles() {
         const lastRecord = vRecords.sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
         const imageHtml = v.image
-            ? `<div class="vehicle-card-image"><img src="${v.image}" alt="${v.brand} ${v.model}"></div>`
+            ? `<div class="vehicle-card-image"><img src="${v.image}" alt="${escapeHTML(v.brand)} ${escapeHTML(v.model)}"></div>`
             : `<div class="vehicle-card-image"><div class="no-image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M5 17h-2v-6l2-5h9l4 5h1a2 2 0 0 1 2 2v4h-2" /><path d="M9 17h6" /></svg><span>ยังไม่มีรูป</span></div></div>`;
 
         return `
@@ -1108,8 +1117,8 @@ function renderVehicles() {
                 ${imageHtml}
                 <div class="vehicle-card-header">
                     <div class="vehicle-card-title">
-                        <h3>${v.brand} ${v.model}</h3>
-                        <span class="plate">🔖 ${v.plate}</span>
+                        <h3>${escapeHTML(v.brand)} ${escapeHTML(v.model)}</h3>
+                        <span class="plate">🔖 ${escapeHTML(v.plate)}</span>
                     </div>
                     <div class="vehicle-card-actions">
                         <button class="btn-icon" onclick="editVehicle('${v.id}')" title="แก้ไข">
@@ -1121,20 +1130,10 @@ function renderVehicles() {
                     </div>
                 </div>
                 <div class="vehicle-card-details">
-                    ${v.year ? `<div class="vehicle-detail"><span class="label">ปี</span><span class="value">${v.year}</span></div>` : ''}
-                    ${v.color ? `<div class="vehicle-detail"><span class="label">สี</span><span class="value">${v.color}</span></div>` : ''}
+                    ${v.year ? `<div class="vehicle-detail"><span class="label">ปี</span><span class="value">${escapeHTML(v.year)}</span></div>` : ''}
+                    ${v.color ? `<div class="vehicle-detail"><span class="label">สี</span><span class="value">${escapeHTML(v.color)}</span></div>` : ''}
                     <div class="vehicle-detail"><span class="label">ไมล์</span><span class="value">${v.mileage ? formatNumber(v.mileage) + ' กม.' : '-'}</span></div>
                     <div class="vehicle-detail"><span class="label">ซ่อมล่าสุด</span><span class="value">${lastRecord ? formatDate(lastRecord.date) : '-'}</span></div>
-                </div>
-                <div class="vehicle-stats">
-                    <div class="vehicle-stat">
-                        <span class="num">${vRecords.length}</span>
-                        <span class="lbl">ครั้งที่ซ่อม</span>
-                    </div>
-                    <div class="vehicle-stat">
-                        <span class="num">${formatCurrency(totalCost)}</span>
-                        <span class="lbl">ค่าใช้จ่ายรวม</span>
-                    </div>
                 </div>
             </div>`;
     }).join('');
@@ -1216,11 +1215,11 @@ function renderRecords() {
                     <div class="meta">
                         <span>📅 ${formatDate(r.date)}</span>
                         <span>🚗 ${getVehicleShort(r.vehicleId)}</span>
-                        <span>🏪 ${r.shop || '-'}</span>
+                        <span>🏪 ${escapeHTML(r.shop || '-')}</span>
                         ${r.mileage ? `<span>📍 ${formatNumber(r.mileage)} กม.</span>` : ''}
                     </div>
                     <div class="meta" style="margin-top:4px">
-                        <span style="color: var(--text-secondary)">${r.description || ''}</span>
+                        <span style="color: var(--text-secondary)">${escapeHTML(r.description || '')}</span>
                     </div>
                     ${imagesHtml}
                 </div>
@@ -1663,7 +1662,7 @@ function renderFuelLogs() {
                     <div class="meta">
                         <span>📅 ${formatDate(f.date)}</span>
                         <span>🚗 ${vehicleLabel}</span>
-                        ${f.station ? `<span>⛽ ${f.station}</span>` : ''}
+                        ${f.station ? `<span>⛽ ${escapeHTML(f.station)}</span>` : ''}
                         ${f.mileage ? `<span>🔢 ${formatNumber(f.mileage)} กม.</span>` : ''}
                     </div>
                     ${f.pricePerLiter ? `<div class="fuel-price-detail">฿${f.pricePerLiter.toFixed(2)}/ล.</div>` : ''}
@@ -2476,7 +2475,7 @@ function renderChargeLogs() {
                 </div>
                 <div class="record-info">
                     <div class="record-title">${l.kwh.toFixed(1)} kWh — ${vehicleLabel}</div>
-                    <div class="record-meta">${formatDate(l.date)} ${l.station ? '• ' + l.station : ''} ${providerInfo.label ? '• ' + providerInfo.label : ''}</div>
+                    <div class="record-meta">${formatDate(l.date)} ${l.station ? '• ' + escapeHTML(l.station) : ''} ${providerInfo.label ? '• ' + escapeHTML(providerInfo.label) : ''}</div>
                     <div class="fuel-price-detail">฿${l.pricePerKwh?.toFixed(2) || '-'}/kWh ${battInfo ? '• ' + battInfo : ''}</div>
                 </div>
                 <div class="record-cost">${formatCurrency(l.totalCost)}</div>
