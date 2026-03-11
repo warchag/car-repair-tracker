@@ -339,6 +339,7 @@ function initNavigation() {
 
             // Refresh page data
             if (page === 'dashboard') renderDashboard();
+            if (page === 'pixel') renderPixelDashboard();
             if (page === 'vehicles') renderVehicles();
             if (page === 'records') { renderRecords(); renderAnalytics(); }
             if (page === 'fuel') renderFuelLogs();
@@ -945,6 +946,153 @@ function updateVehicleSelects() {
 // ==========================================
 // Renderers
 // ==========================================
+
+// Pixel Game Dashboard
+function renderPixelDashboard() {
+    const vehicles = DB.getVehicles();
+    const records = DB.getRecords();
+    const fuelLogs = DB.getFuelLogs();
+    const chargeLogs = DB.getChargeLogs();
+
+    // --- Stats ---
+    const totalRepairCost = records.reduce((sum, r) => sum + (r.cost || 0), 0);
+    const totalFuelCost = fuelLogs.reduce((sum, f) => sum + (f.totalCost || 0), 0);
+    const totalChargeCost = chargeLogs.reduce((sum, c) => sum + (c.totalCost || 0), 0);
+
+    document.getElementById('pixelStatCars').textContent = vehicles.length + ' คัน';
+    document.getElementById('pixelStatRepair').textContent = formatCurrency(totalRepairCost);
+    document.getElementById('pixelStatFuel').textContent = formatCurrency(totalFuelCost);
+    document.getElementById('pixelStatCharge').textContent = formatCurrency(totalChargeCost);
+
+    // --- Level & Bars ---
+    const totalActivities = records.length + fuelLogs.length + chargeLogs.length;
+    const level = Math.max(1, Math.floor(totalActivities / 10) + 1);
+    const xpCurrent = totalActivities % 50;
+    const xpMax = 50;
+    const hpMax = 100;
+    // HP = % of vehicles with at least one activity
+    const activeVehicleIds = new Set([
+        ...records.map(r => r.vehicleId),
+        ...fuelLogs.map(f => f.vehicleId),
+        ...chargeLogs.map(c => c.vehicleId)
+    ]);
+    const hpCurrent = vehicles.length > 0
+        ? Math.round((activeVehicleIds.size / vehicles.length) * hpMax)
+        : (vehicles.length === 0 ? 0 : hpMax);
+
+    document.getElementById('pixelLevel').textContent = level;
+    document.getElementById('pixelHpBar').style.width = Math.max(hpCurrent, 0) + '%';
+    document.getElementById('pixelHpText').textContent = hpCurrent + '/' + hpMax;
+    document.getElementById('pixelXpBar').style.width = ((xpCurrent / xpMax) * 100) + '%';
+    document.getElementById('pixelXpText').textContent = xpCurrent + '/' + xpMax;
+
+    // --- Quest Log (Recent Activities) ---
+    const questLog = document.getElementById('pixelQuestLog');
+    const activities = [];
+
+    records.forEach(r => {
+        const typeInfo = REPAIR_TYPES[r.type] || REPAIR_TYPES.other;
+        activities.push({
+            date: r.date,
+            type: 'repair',
+            emoji: typeInfo.emoji,
+            title: typeInfo.label,
+            meta: `${getVehicleShort(r.vehicleId)} · ${r.shop || '-'}`,
+            cost: r.cost || 0,
+            badgeClass: 'repair',
+            badgeLabel: '⚔ ซ่อม'
+        });
+    });
+
+    fuelLogs.forEach(f => {
+        const fuelInfo = (typeof FUEL_TYPES !== 'undefined' && FUEL_TYPES[f.fuelType]) || { emoji: '⛽', label: f.fuelType || 'น้ำมัน' };
+        activities.push({
+            date: f.date,
+            type: 'fuel',
+            emoji: fuelInfo.emoji,
+            title: `เติม${fuelInfo.label}`,
+            meta: `${getVehicleShort(f.vehicleId)}${f.liters ? ' · ' + f.liters + ' ลิตร' : ''}`,
+            cost: f.totalCost || 0,
+            badgeClass: 'fuel',
+            badgeLabel: '🧪 เติม'
+        });
+    });
+
+    chargeLogs.forEach(c => {
+        const chargeInfo = (typeof CHARGE_TYPES !== 'undefined' && CHARGE_TYPES[c.chargeType]) || { emoji: '⚡', label: c.chargeType || 'ชาร์จ' };
+        activities.push({
+            date: c.date,
+            type: 'charge',
+            emoji: chargeInfo.emoji || '⚡',
+            title: `ชาร์จ ${chargeInfo.label || 'EV'}`,
+            meta: `${getVehicleShort(c.vehicleId)}${c.kwh ? ' · ' + c.kwh + ' kWh' : ''}`,
+            cost: c.totalCost || 0,
+            badgeClass: 'charge',
+            badgeLabel: '⚡ ชาร์จ'
+        });
+    });
+
+    activities.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const recentQuests = activities.slice(0, 8);
+
+    if (recentQuests.length === 0) {
+        questLog.innerHTML = `
+            <div class="pixel-empty-quest">
+                <span>ยังไม่มี Quest...</span>
+                <span class="pixel-hint">เริ่มบันทึกการซ่อม เติมน้ำมัน หรือชาร์จไฟ!</span>
+            </div>`;
+    } else {
+        questLog.innerHTML = recentQuests.map(a => `
+            <div class="pixel-quest-item">
+                <div class="pixel-quest-icon">${a.emoji}</div>
+                <div class="pixel-quest-info">
+                    <span class="pixel-quest-name">${a.title}</span>
+                    <span class="pixel-quest-meta">📅 ${formatDate(a.date)} · ${a.meta}</span>
+                </div>
+                <span class="pixel-quest-badge ${a.badgeClass}">${a.badgeLabel}</span>
+                <span class="pixel-quest-reward">${formatCurrency(a.cost)}</span>
+            </div>`).join('');
+    }
+
+    // --- Upcoming Quests ---
+    const upcomingContainer = document.getElementById('pixelUpcomingQuests');
+    const upcomingRecords = records
+        .filter(r => r.nextDate && daysUntil(r.nextDate) !== null)
+        .sort((a, b) => new Date(a.nextDate) - new Date(b.nextDate))
+        .slice(0, 5);
+
+    if (upcomingRecords.length === 0) {
+        upcomingContainer.innerHTML = `
+            <div class="pixel-empty-quest">
+                <span>ไม่มี Quest ที่จะถึง</span>
+                <span class="pixel-hint">ระบุวันนัดซ่อมครั้งถัดไปเมื่อบันทึก</span>
+            </div>`;
+    } else {
+        upcomingContainer.innerHTML = upcomingRecords.map(r => {
+            const nextDate = new Date(r.nextDate);
+            const days = daysUntil(r.nextDate);
+            const isOverdue = days < 0;
+            const isToday = days === 0;
+            const daysText = isOverdue
+                ? `เกิน ${Math.abs(days)} วัน!`
+                : isToday ? '🔥 วันนี้!' : `อีก ${days} วัน`;
+            const daysClass = isOverdue ? 'overdue' : isToday ? 'today' : '';
+
+            return `
+                <div class="pixel-upcoming-item">
+                    <div class="pixel-upcoming-date">
+                        <span class="day">${nextDate.getDate()}</span>
+                        <span class="month">${THAI_MONTHS[nextDate.getMonth()]}</span>
+                    </div>
+                    <div class="pixel-upcoming-info">
+                        <span class="title">${getVehicleShort(r.vehicleId)}</span>
+                        <span class="subtitle">${(REPAIR_TYPES[r.type] || REPAIR_TYPES.other).label} - ${escapeHTML(r.shop || '-')}</span>
+                    </div>
+                    <span class="pixel-days-left ${daysClass}">${daysText}</span>
+                </div>`;
+        }).join('');
+    }
+}
 
 // Dashboard
 function renderDashboard() {

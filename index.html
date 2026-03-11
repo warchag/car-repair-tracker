@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+Thai:wght@300;400;500;600;700;800&family=Press+Start+2P&display=swap"
         rel="stylesheet">
     <link rel="icon" type="image/svg+xml" href="icon.svg">
     <link rel="apple-touch-icon" href="icon.svg">
@@ -102,7 +102,7 @@
                         </svg>
                     </a>
                 </div>
-                <div class="app-version-auth">CarCare Pro v1.0.0</div>
+                <div class="app-version-auth">CarCare Pro v1.0.1</div>
             </div>
         </div>
     </div>
@@ -247,6 +247,17 @@
                 </svg>
                 <span>แดชบอร์ด</span>
             </li>
+            <li class="nav-item" data-page="pixel">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="6" width="20" height="12" rx="2" />
+                    <path d="M6 12h.01M10 12h.01" />
+                    <path d="M15 10l2 2-2 2" />
+                    <path d="M2 10h2" />
+                    <path d="M2 14h2" />
+                </svg>
+                <span>🎮 Pixel Quest</span>
+            </li>
             <li class="nav-item" data-page="vehicles">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
@@ -343,7 +354,7 @@
             </button>
             <div class="app-version-sidebar"
                 style="text-align: center; margin-top: 16px; font-size: 0.8rem; color: var(--text-muted); font-weight: 500; opacity: 0.7;">
-                CarCare Pro v1.0.0
+                CarCare Pro v1.0.1
             </div>
         </div>
     </nav>
@@ -470,6 +481,198 @@
                             <span>ระบุวันนัดซ่อมครั้งถัดไปเมื่อบันทึก</span>
                         </div>
                     </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================== PIXEL GAME DASHBOARD =================== -->
+        <section class="page" id="page-pixel">
+            <div class="pixel-world">
+                <!-- Scanline overlay -->
+                <div class="pixel-scanlines"></div>
+
+                <!-- Game Title Bar -->
+                <div class="pixel-title-bar">
+                    <div class="pixel-title-left">
+                        <span class="pixel-game-title">🎮 CarCare Quest</span>
+                        <span class="pixel-subtitle">~ สถานะอาณาจักรรถยนต์ ~</span>
+                    </div>
+                    <div class="pixel-title-right">
+                        <div class="pixel-level">
+                            <span class="pixel-level-label">LV</span>
+                            <span class="pixel-level-value" id="pixelLevel">1</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HP / XP Bars -->
+                <div class="pixel-bars">
+                    <div class="pixel-bar-group">
+                        <span class="pixel-bar-label">HP</span>
+                        <div class="pixel-bar-track hp">
+                            <div class="pixel-bar-fill hp" id="pixelHpBar" style="width: 100%"></div>
+                        </div>
+                        <span class="pixel-bar-text" id="pixelHpText">100/100</span>
+                    </div>
+                    <div class="pixel-bar-group">
+                        <span class="pixel-bar-label">XP</span>
+                        <div class="pixel-bar-track xp">
+                            <div class="pixel-bar-fill xp" id="pixelXpBar" style="width: 0%"></div>
+                        </div>
+                        <span class="pixel-bar-text" id="pixelXpText">0/50</span>
+                    </div>
+                </div>
+
+                <!-- Stats Inventory Grid -->
+                <div class="pixel-inventory">
+                    <div class="pixel-inv-title">📦 INVENTORY</div>
+                    <div class="pixel-inv-grid">
+                        <div class="pixel-inv-slot" data-goto="vehicles">
+                            <div class="pixel-inv-icon">🚗</div>
+                            <div class="pixel-inv-info">
+                                <span class="pixel-inv-name">Party Members</span>
+                                <span class="pixel-inv-value" id="pixelStatCars">0 คัน</span>
+                            </div>
+                        </div>
+                        <div class="pixel-inv-slot" data-goto="records">
+                            <div class="pixel-inv-icon">🔧</div>
+                            <div class="pixel-inv-info">
+                                <span class="pixel-inv-name">Repair Gold</span>
+                                <span class="pixel-inv-value" id="pixelStatRepair">฿0</span>
+                            </div>
+                        </div>
+                        <div class="pixel-inv-slot" data-goto="fuel">
+                            <div class="pixel-inv-icon">⛽</div>
+                            <div class="pixel-inv-info">
+                                <span class="pixel-inv-name">Fuel Potions</span>
+                                <span class="pixel-inv-value" id="pixelStatFuel">฿0</span>
+                            </div>
+                        </div>
+                        <div class="pixel-inv-slot" data-goto="charge">
+                            <div class="pixel-inv-icon">⚡</div>
+                            <div class="pixel-inv-info">
+                                <span class="pixel-inv-name">Thunder Stones</span>
+                                <span class="pixel-inv-value" id="pixelStatCharge">฿0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pixel Art Scene -->
+                <div class="pixel-scene">
+                    <div class="pixel-scene-title">🏙️ CAR TOWN</div>
+                    <div class="pixel-scene-canvas">
+                        <div class="pixel-sky">
+                            <div class="pixel-star" style="top:10%;left:15%"></div>
+                            <div class="pixel-star" style="top:5%;left:45%"></div>
+                            <div class="pixel-star" style="top:15%;left:70%"></div>
+                            <div class="pixel-star" style="top:8%;left:90%"></div>
+                            <div class="pixel-star" style="top:20%;left:30%"></div>
+                            <div class="pixel-cloud" style="top:12%;left:20%"></div>
+                            <div class="pixel-cloud" style="top:6%;left:65%"></div>
+                        </div>
+                        <div class="pixel-buildings">
+                            <div class="pixel-building b1" data-goto="records" title="ไปหน้าบันทึกการซ่อม">
+                                <div class="pixel-window"></div>
+                                <div class="pixel-window"></div>
+                                <div class="pixel-window"></div>
+                                <div class="pixel-window"></div>
+                                <div class="pixel-building-sign">🔧 GARAGE</div>
+                            </div>
+                            <div class="pixel-building b2" data-goto="fuel" title="ไปหน้าบันทึกน้ำมัน">
+                                <div class="pixel-window"></div>
+                                <div class="pixel-window"></div>
+                                <div class="pixel-building-sign">⛽ GAS</div>
+                            </div>
+                            <div class="pixel-building b3" data-goto="charge" title="ไปหน้าบันทึกการชาร์จ">
+                                <div class="pixel-window"></div>
+                                <div class="pixel-window"></div>
+                                <div class="pixel-window"></div>
+                                <div class="pixel-window"></div>
+                                <div class="pixel-window"></div>
+                                <div class="pixel-window"></div>
+                                <div class="pixel-building-sign">⚡ CHARGE</div>
+                            </div>
+                        </div>
+                        <div class="pixel-road">
+                            <div class="pixel-road-line"></div>
+                            <div class="pixel-car car-1">🚗</div>
+                            <div class="pixel-car car-2">🚙</div>
+                            <div class="pixel-car car-3">🏎️</div>
+                        </div>
+                        <div class="pixel-ground">
+                            <div class="pixel-tree" style="left:5%">
+                                <div class="pixel-tree-top"></div>
+                                <div class="pixel-tree-mid"></div>
+                                <div class="pixel-tree-trunk"></div>
+                            </div>
+                            <div class="pixel-tree tree-sm" style="left:18%">
+                                <div class="pixel-tree-top"></div>
+                                <div class="pixel-tree-mid"></div>
+                                <div class="pixel-tree-trunk"></div>
+                            </div>
+                            <div class="pixel-tree" style="left:38%">
+                                <div class="pixel-tree-top"></div>
+                                <div class="pixel-tree-mid"></div>
+                                <div class="pixel-tree-trunk"></div>
+                            </div>
+                            <div class="pixel-tree tree-sm" style="left:55%">
+                                <div class="pixel-tree-top"></div>
+                                <div class="pixel-tree-mid"></div>
+                                <div class="pixel-tree-trunk"></div>
+                            </div>
+                            <div class="pixel-tree" style="left:72%">
+                                <div class="pixel-tree-top"></div>
+                                <div class="pixel-tree-mid"></div>
+                                <div class="pixel-tree-trunk"></div>
+                            </div>
+                            <div class="pixel-tree tree-sm" style="left:88%">
+                                <div class="pixel-tree-top"></div>
+                                <div class="pixel-tree-mid"></div>
+                                <div class="pixel-tree-trunk"></div>
+                            </div>
+                            <div class="pixel-flower" style="left:12%"></div>
+                            <div class="pixel-flower f2" style="left:32%"></div>
+                            <div class="pixel-flower" style="left:48%"></div>
+                            <div class="pixel-flower f3" style="left:65%"></div>
+                            <div class="pixel-flower f2" style="left:82%"></div>
+                            <div class="pixel-flower" style="left:95%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quest Log (Recent Activity) -->
+                <div class="pixel-quests-section">
+                    <div class="pixel-section-header">
+                        <span>📜 QUEST LOG</span>
+                        <span class="pixel-cursor-blink">▸</span>
+                    </div>
+                    <div class="pixel-quest-list" id="pixelQuestLog">
+                        <div class="pixel-empty-quest">
+                            <span>ยังไม่มี Quest...</span>
+                            <span class="pixel-hint">เริ่มบันทึกการซ่อม เติมน้ำมัน หรือชาร์จไฟ!</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upcoming Quests -->
+                <div class="pixel-quests-section">
+                    <div class="pixel-section-header">
+                        <span>⚔️ UPCOMING QUESTS</span>
+                        <span class="pixel-cursor-blink">▸</span>
+                    </div>
+                    <div class="pixel-quest-list" id="pixelUpcomingQuests">
+                        <div class="pixel-empty-quest">
+                            <span>ไม่มี Quest ที่จะถึง</span>
+                            <span class="pixel-hint">ระบุวันนัดซ่อมครั้งถัดไปเมื่อบันทึก</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="pixel-footer">
+                    <span>PRESS START TO CONTINUE...</span>
+                    <span class="pixel-cursor-blink">█</span>
                 </div>
             </div>
         </section>
@@ -985,7 +1188,7 @@
                         <p class="developer-role">ผู้สร้างสรรค์แอปพลิเคชัน CarCare Pro</p>
                         <div class="app-version-about"
                             style="display: inline-block; margin-top: 8px; padding: 4px 12px; background: var(--bg-input); border-radius: 20px; font-size: 0.85rem; color: var(--text-secondary); border: 1px solid var(--border-color);">
-                            Version 1.0.0
+                            Version 1.0.1
                         </div>
                     </div>
 
