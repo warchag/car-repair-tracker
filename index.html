@@ -62,13 +62,13 @@
                     เพื่อความสะดวกและยืดอายุการใช้งานยานพาหนะคู่ใจของคุณ</p>
                 <span class="auth-socials-title">ติดตามผู้พัฒนาได้ที่</span>
                 <div class="auth-socials">
-                    <a href="#" target="_blank" title="Facebook">
+                    <a href="https://www.facebook.com/learntodeveloper" target="_blank" title="Facebook">
                         <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2"
                             fill="none" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
                         </svg>
                     </a>
-                    <a href="#" target="_blank" title="YouTube">
+                    <a href="https://www.youtube.com/@learntodeveloper" target="_blank" title="YouTube">
                         <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2"
                             fill="none" stroke-linecap="round" stroke-linejoin="round">
                             <path
@@ -77,13 +77,13 @@
                             <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon>
                         </svg>
                     </a>
-                    <a href="#" target="_blank" title="TikTok">
+                    <a href="https://www.tiktok.com/@learntodeveloper" target="_blank" title="TikTok">
                         <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2"
                             fill="none" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"></path>
                         </svg>
                     </a>
-                    <a href="#" target="_blank" title="GitHub">
+                    <a href="https://github.com/warchag" target="_blank" title="GitHub">
                         <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2"
                             fill="none" stroke-linecap="round" stroke-linejoin="round">
                             <path
@@ -91,7 +91,7 @@
                             </path>
                         </svg>
                     </a>
-                    <a href="#" target="_blank" title="Website">
+                    <a href="https://www.learntodeveloper.com/" target="_blank" title="Website">
                         <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2"
                             fill="none" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
@@ -102,7 +102,7 @@
                         </svg>
                     </a>
                 </div>
-                <div class="app-version-auth">CarCare Pro v1.0.1</div>
+                <div class="app-version-auth">CarCare Pro v1.0.2</div>
             </div>
         </div>
     </div>
@@ -310,6 +310,26 @@
         </ul>
         <div class="sidebar-divider"></div>
         <div class="sidebar-actions">
+            <button class="btn-backup btn-backup-export" id="btnBackupExport" title="สำรองข้อมูล">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="7 10 12 15 17 10" />
+                    <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <span>สำรองข้อมูล</span>
+            </button>
+            <button class="btn-backup btn-backup-import" id="btnBackupImport" title="กู้คืนข้อมูล">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                <span>กู้คืนข้อมูล</span>
+            </button>
+            <input type="file" id="backupFileInput" accept=".json" style="display:none">
+            <div class="sidebar-divider" style="margin: 8px 0;"></div>
             <button class="theme-toggle" id="btnThemeToggle" title="สลับธีม">
                 <span class="icon-sun">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -354,7 +374,7 @@
             </button>
             <div class="app-version-sidebar"
                 style="text-align: center; margin-top: 16px; font-size: 0.8rem; color: var(--text-muted); font-weight: 500; opacity: 0.7;">
-                CarCare Pro v1.0.1
+                CarCare Pro v1.0.2
             </div>
         </div>
     </nav>
@@ -496,12 +516,20 @@
                     <div class="pixel-title-left">
                         <span class="pixel-game-title">🎮 CarCare Quest</span>
                         <span class="pixel-subtitle">~ สถานะอาณาจักรรถยนต์ ~</span>
+                        <span class="pixel-rank-title" id="pixelRankTitle">🛡️ Rookie Driver</span>
                     </div>
                     <div class="pixel-title-right">
+                        <div class="pixel-streak" id="pixelStreak" title="Streak วันที่บันทึกต่อเนื่อง">
+                            <span class="pixel-streak-fire">🔥</span>
+                            <span class="pixel-streak-value" id="pixelStreakValue">0</span>
+                        </div>
                         <div class="pixel-level">
                             <span class="pixel-level-label">LV</span>
                             <span class="pixel-level-value" id="pixelLevel">1</span>
                         </div>
+                        <button class="pixel-sound-toggle" id="pixelSoundToggle" title="เปิด/ปิดเสียง">
+                            <span id="pixelSoundIcon">🔇</span>
+                        </button>
                     </div>
                 </div>
 
@@ -666,6 +694,46 @@
                             <span>ไม่มี Quest ที่จะถึง</span>
                             <span class="pixel-hint">ระบุวันนัดซ่อมครั้งถัดไปเมื่อบันทึก</span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Achievement Badges -->
+                <div class="pixel-quests-section">
+                    <div class="pixel-section-header">
+                        <span>🏆 ACHIEVEMENTS</span>
+                        <span class="pixel-cursor-blink">▸</span>
+                    </div>
+                    <div class="pixel-achievements" id="pixelAchievements">
+                    </div>
+                </div>
+
+                <!-- Monthly Challenge -->
+                <div class="pixel-quests-section">
+                    <div class="pixel-section-header">
+                        <span>📊 MONTHLY CHALLENGE</span>
+                        <span class="pixel-cursor-blink">▸</span>
+                    </div>
+                    <div class="pixel-challenge-box" id="pixelChallenge">
+                    </div>
+                </div>
+
+                <!-- Vehicle Ranking (Leaderboard) -->
+                <div class="pixel-quests-section">
+                    <div class="pixel-section-header">
+                        <span>🏁 VEHICLE RANKING</span>
+                        <span class="pixel-cursor-blink">▸</span>
+                    </div>
+                    <div class="pixel-leaderboard" id="pixelLeaderboard">
+                    </div>
+                </div>
+
+                <!-- Daily Tip -->
+                <div class="pixel-quests-section">
+                    <div class="pixel-section-header">
+                        <span>🎰 DAILY TIP</span>
+                        <span class="pixel-cursor-blink">▸</span>
+                    </div>
+                    <div class="pixel-tip-box" id="pixelDailyTip">
                     </div>
                 </div>
 
@@ -1188,7 +1256,7 @@
                         <p class="developer-role">ผู้สร้างสรรค์แอปพลิเคชัน CarCare Pro</p>
                         <div class="app-version-about"
                             style="display: inline-block; margin-top: 8px; padding: 4px 12px; background: var(--bg-input); border-radius: 20px; font-size: 0.85rem; color: var(--text-secondary); border: 1px solid var(--border-color);">
-                            Version 1.0.1
+                            Version 1.0.2
                         </div>
                     </div>
 
@@ -1738,6 +1806,90 @@
                 <div class="modal-actions">
                     <button class="btn btn-ghost" data-close="settingsModal">ยกเลิก</button>
                     <button class="btn btn-primary" id="btnSavePin">บันทึก PIN ใหม่</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup Import Modal -->
+    <div class="modal-overlay" id="backupImportModal">
+        <div class="modal" style="max-width: 440px;">
+            <div class="modal-header">
+                <h2>📦 กู้คืนข้อมูล</h2>
+                <button class="btn-icon" data-close="backupImportModal">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="backup-info-card" id="backupPreviewCard">
+                    <div class="backup-info-header">
+                        <span class="backup-info-icon">📋</span>
+                        <div>
+                            <div class="backup-info-title" id="backupFileName">—</div>
+                            <div class="backup-info-date" id="backupExportDate">—</div>
+                        </div>
+                    </div>
+                    <div class="backup-info-stats">
+                        <div class="backup-stat">
+                            <span class="backup-stat-value" id="backupStatVehicles">0</span>
+                            <span class="backup-stat-label">รถ</span>
+                        </div>
+                        <div class="backup-stat">
+                            <span class="backup-stat-value" id="backupStatRecords">0</span>
+                            <span class="backup-stat-label">รายการซ่อม</span>
+                        </div>
+                        <div class="backup-stat">
+                            <span class="backup-stat-value" id="backupStatFuel">0</span>
+                            <span class="backup-stat-label">น้ำมัน</span>
+                        </div>
+                        <div class="backup-stat">
+                            <span class="backup-stat-value" id="backupStatCharge">0</span>
+                            <span class="backup-stat-label">ชาร์จ</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 16px;">
+                    <label class="form-label">โหมดการกู้คืน</label>
+                    <div class="backup-mode-options">
+                        <label class="backup-mode-option">
+                            <input type="radio" name="importMode" value="merge" checked>
+                            <div class="backup-mode-card">
+                                <strong>🔀 รวมข้อมูล (Merge)</strong>
+                                <span>เพิ่มเฉพาะรายการใหม่ ข้อมูลเดิมไม่ถูกลบ</span>
+                            </div>
+                        </label>
+                        <label class="backup-mode-option">
+                            <input type="radio" name="importMode" value="overwrite">
+                            <div class="backup-mode-card">
+                                <strong>⚠️ เขียนทับ (Overwrite)</strong>
+                                <span>ลบข้อมูลเดิมทั้งหมด ใช้จากไฟล์แทน</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="delete-pin-section">
+                    <label class="pin-confirm-label">ยืนยัน PIN 4 หลัก</label>
+                    <div class="pin-confirm-inputs">
+                        <input type="tel" maxlength="1" class="pin-confirm-digit backup-pin" data-idx="0"
+                            inputmode="numeric">
+                        <input type="tel" maxlength="1" class="pin-confirm-digit backup-pin" data-idx="1"
+                            inputmode="numeric">
+                        <input type="tel" maxlength="1" class="pin-confirm-digit backup-pin" data-idx="2"
+                            inputmode="numeric">
+                        <input type="tel" maxlength="1" class="pin-confirm-digit backup-pin" data-idx="3"
+                            inputmode="numeric">
+                    </div>
+                    <p class="pin-confirm-error" id="backupPinError"></p>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-ghost" data-close="backupImportModal">ยกเลิก</button>
+                    <button class="btn btn-primary" id="btnConfirmImport">กู้คืนข้อมูล</button>
                 </div>
             </div>
         </div>

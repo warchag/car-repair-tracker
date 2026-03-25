@@ -948,6 +948,125 @@ function updateVehicleSelects() {
 // ==========================================
 
 // Pixel Game Dashboard
+// ==========================================
+// Pixel Dashboard — Sound Effects (Web Audio API)
+// ==========================================
+const PixelSound = {
+    _ctx: null,
+    _enabled: localStorage.getItem('pixelSoundEnabled') === 'true',
+
+    getCtx() {
+        if (!this._ctx) this._ctx = new (window.AudioContext || window.webkitAudioContext)();
+        return this._ctx;
+    },
+
+    toggle() {
+        this._enabled = !this._enabled;
+        localStorage.setItem('pixelSoundEnabled', this._enabled);
+        document.getElementById('pixelSoundIcon').textContent = this._enabled ? '🔊' : '🔇';
+        if (this._enabled) this.play('toggle');
+    },
+
+    play(type) {
+        if (!this._enabled) return;
+        try {
+            const ctx = this.getCtx();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            gain.gain.setValueAtTime(0.08, ctx.currentTime);
+
+            switch (type) {
+                case 'levelup':
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(523, ctx.currentTime);
+                    osc.frequency.setValueAtTime(659, ctx.currentTime + 0.1);
+                    osc.frequency.setValueAtTime(784, ctx.currentTime + 0.2);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.4);
+                    break;
+                case 'achievement':
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(880, ctx.currentTime);
+                    osc.frequency.setValueAtTime(1109, ctx.currentTime + 0.08);
+                    osc.frequency.setValueAtTime(1319, ctx.currentTime + 0.16);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.35);
+                    break;
+                case 'toggle':
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.15);
+                    break;
+                default:
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(660, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.1);
+                    break;
+            }
+        } catch (e) { /* ignore audio errors */ }
+    }
+};
+
+// ==========================================
+// Pixel Dashboard — Constants
+// ==========================================
+const PIXEL_RANKS = [
+    { minLevel: 1, title: '🛡️ Rookie Driver', color: '#aaaacc' },
+    { minLevel: 3, title: '⚔️ Road Warrior', color: '#44ff88' },
+    { minLevel: 5, title: '🏅 Car Knight', color: '#66aaff' },
+    { minLevel: 8, title: '👑 Fleet Commander', color: '#ffcc00' },
+    { minLevel: 12, title: '🌟 Garage Master', color: '#ff88ff' },
+    { minLevel: 16, title: '🔱 Car Sage', color: '#ff6644' },
+    { minLevel: 20, title: '💎 Legendary Mechanic', color: '#00ffcc' },
+    { minLevel: 30, title: '🐉 Dragon Driver', color: '#ff4444' }
+];
+
+const PIXEL_ACHIEVEMENTS = [
+    { id: 'first_car', emoji: '🚗', name: 'First Ride', desc: 'เพิ่มรถคันแรก', check: (v, r, f, c) => v.length >= 1 },
+    { id: 'three_cars', emoji: '🏎️', name: 'Fleet Owner', desc: 'มีรถ 3 คัน', check: (v, r, f, c) => v.length >= 3 },
+    { id: 'first_repair', emoji: '🔧', name: 'First Fix', desc: 'บันทึกซ่อมครั้งแรก', check: (v, r, f, c) => r.length >= 1 },
+    { id: 'ten_repairs', emoji: '⚔️', name: 'Battle-Tested', desc: 'ซ่อม 10 ครั้ง', check: (v, r, f, c) => r.length >= 10 },
+    { id: 'first_fuel', emoji: '⛽', name: 'Fuel Up!', desc: 'เติมน้ำมันครั้งแรก', check: (v, r, f, c) => f.length >= 1 },
+    { id: 'ten_fuels', emoji: '🧪', name: 'Potion Master', desc: 'เติมน้ำมัน 10 ครั้ง', check: (v, r, f, c) => f.length >= 10 },
+    { id: 'first_charge', emoji: '⚡', name: 'Thunder Start', desc: 'ชาร์จไฟครั้งแรก', check: (v, r, f, c) => c.length >= 1 },
+    { id: 'five_charges', emoji: '🌩️', name: 'Storm Rider', desc: 'ชาร์จไฟ 5 ครั้ง', check: (v, r, f, c) => c.length >= 5 },
+    { id: 'all_types', emoji: '🏆', name: 'Completionist', desc: 'ซ่อมครบ 5 ประเภท', check: (v, r, f, c) => new Set(r.map(x => x.type)).size >= 5 },
+    { id: 'big_spender', emoji: '💰', name: 'Big Spender', desc: 'ใช้เงินรวม ฿50,000', check: (v, r, f, c) => (r.reduce((s, x) => s + (x.cost || 0), 0) + f.reduce((s, x) => s + (x.totalCost || 0), 0) + c.reduce((s, x) => s + (x.totalCost || 0), 0)) >= 50000 },
+    { id: 'level5', emoji: '⭐', name: 'Rising Star', desc: 'ถึงเลเวล 5', check: (v, r, f, c) => { const t = r.length + f.length + c.length; return Math.max(1, Math.floor(t / 10) + 1) >= 5; } },
+    { id: 'level10', emoji: '🌟', name: 'Superstar', desc: 'ถึงเลเวล 10', check: (v, r, f, c) => { const t = r.length + f.length + c.length; return Math.max(1, Math.floor(t / 10) + 1) >= 10; } },
+];
+
+const PIXEL_DAILY_TIPS = [
+    { emoji: '🔧', tip: 'ตรวจเช็คน้ำมันเครื่องทุก 10,000 กม. หรือทุก 6 เดือน' },
+    { emoji: '🛞', tip: 'สลับยางทุก 10,000 กม. เพื่อให้สึกหรอเท่ากัน' },
+    { emoji: '💨', tip: 'เช็คลมยางทุกเดือน ลมยางต่ำกินน้ำมันมากขึ้น 3%' },
+    { emoji: '🔋', tip: 'แบตเตอรี่รถอายุเฉลี่ย 2-3 ปี ควรตรวจสอบเป็นประจำ' },
+    { emoji: '❄️', tip: 'ล้างแอร์รถทุก 6 เดือน ช่วยให้เย็นดีและประหยัดน้ำมัน' },
+    { emoji: '💧', tip: 'เช็คระดับน้ำหล่อเย็นทุกเดือน ป้องกันเครื่องร้อนจัด' },
+    { emoji: '🔦', tip: 'ตรวจไฟหน้า-ไฟท้ายทุกสัปดาห์ เพื่อความปลอดภัย' },
+    { emoji: '🧹', tip: 'ล้างรถทุก 2 สัปดาห์ ช่วยรักษาสภาพสีรถ' },
+    { emoji: '⛽', tip: 'เติมน้ำมันเมื่อเหลือ 1/4 ถัง ช่วยรักษาปั๊มน้ำมัน' },
+    { emoji: '🛑', tip: 'ตรวจผ้าเบรกทุก 30,000 กม. เพื่อความปลอดภัย' },
+    { emoji: '🔩', tip: 'ตรวจสอบช่วงล่างเมื่อรถเริ่มมีเสียงดัง หรือเกาะถนนไม่ดี' },
+    { emoji: '🪟', tip: 'เปลี่ยนใบปัดน้ำฝนทุก 6-12 เดือน เพื่อทัศนวิสัยที่ดี' },
+    { emoji: '⚙️', tip: 'เช็คน้ำมันเกียร์ทุก 40,000 กม. ช่วยยืดอายุเกียร์' },
+    { emoji: '🚗', tip: 'อุ่นเครื่อง 30 วินาทีก่อนออกตัว ช่วยรักษาเครื่องยนต์' },
+    { emoji: '🌡️', tip: 'จอดรถในร่ม ช่วยรักษาสีรถและอายุแบตเตอรี่' },
+    { emoji: '📋', tip: 'จดบันทึกทุกครั้งที่ซ่อม ช่วยเพิ่มมูลค่ารถเมื่อขาย' },
+    { emoji: '🔑', tip: 'ถอดกุญแจรีโมทเมื่อแบตเหลือน้อย ป้องกันสัญญาณอ่อน' },
+    { emoji: '🧴', tip: 'ใช้น้ำยาล้างกระจกรถ อย่าใช้น้ำยาล้างจาน จะทำลายสี' },
+    { emoji: '🏁', tip: 'ขับรถด้วยความเร็วคงที่ ประหยัดน้ำมันได้ถึง 20%' },
+    { emoji: '🔌', tip: 'สำหรับรถ EV ชาร์จระหว่าง 20-80% ช่วยยืดอายุแบต' },
+];
+
 function renderPixelDashboard() {
     const vehicles = DB.getVehicles();
     const records = DB.getRecords();
@@ -964,27 +1083,100 @@ function renderPixelDashboard() {
     document.getElementById('pixelStatFuel').textContent = formatCurrency(totalFuelCost);
     document.getElementById('pixelStatCharge').textContent = formatCurrency(totalChargeCost);
 
-    // --- Level & Bars ---
+    // --- Level & Rank Title (Feature 1) ---
     const totalActivities = records.length + fuelLogs.length + chargeLogs.length;
     const level = Math.max(1, Math.floor(totalActivities / 10) + 1);
     const xpCurrent = totalActivities % 50;
     const xpMax = 50;
-    const hpMax = 100;
-    // HP = % of vehicles with at least one activity
-    const activeVehicleIds = new Set([
-        ...records.map(r => r.vehicleId),
-        ...fuelLogs.map(f => f.vehicleId),
-        ...chargeLogs.map(c => c.vehicleId)
-    ]);
-    const hpCurrent = vehicles.length > 0
-        ? Math.round((activeVehicleIds.size / vehicles.length) * hpMax)
-        : (vehicles.length === 0 ? 0 : hpMax);
 
     document.getElementById('pixelLevel').textContent = level;
+
+    // Set rank title based on level
+    let rank = PIXEL_RANKS[0];
+    for (let i = PIXEL_RANKS.length - 1; i >= 0; i--) {
+        if (level >= PIXEL_RANKS[i].minLevel) { rank = PIXEL_RANKS[i]; break; }
+    }
+    const rankEl = document.getElementById('pixelRankTitle');
+    rankEl.textContent = rank.title;
+    rankEl.style.color = rank.color;
+
+    // --- HP Bar — car health based on overdue maintenance (Feature 2) ---
+    const hpMax = 100;
+    let hpCurrent = hpMax;
+    if (vehicles.length > 0) {
+        const nowDate = new Date();
+        nowDate.setHours(0, 0, 0, 0);
+        let overdueCount = 0;
+        vehicles.forEach(v => {
+            const vRecords = records.filter(r => r.vehicleId === v.id && r.nextDate);
+            const hasOverdue = vRecords.some(r => {
+                const nd = new Date(r.nextDate);
+                nd.setHours(0, 0, 0, 0);
+                return nd < nowDate;
+            });
+            if (hasOverdue) overdueCount++;
+        });
+        const healthRatio = 1 - (overdueCount / vehicles.length);
+        hpCurrent = Math.round(healthRatio * hpMax);
+    } else {
+        hpCurrent = 0;
+    }
+
     document.getElementById('pixelHpBar').style.width = Math.max(hpCurrent, 0) + '%';
     document.getElementById('pixelHpText').textContent = hpCurrent + '/' + hpMax;
     document.getElementById('pixelXpBar').style.width = ((xpCurrent / xpMax) * 100) + '%';
     document.getElementById('pixelXpText').textContent = xpCurrent + '/' + xpMax;
+
+    // --- Streak System (Feature 7) ---
+    const allDates = [
+        ...records.map(r => r.date),
+        ...fuelLogs.map(f => f.date),
+        ...chargeLogs.map(c => c.date)
+    ].filter(Boolean).map(d => {
+        const dt = new Date(d);
+        return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+    });
+    const uniqueDates = [...new Set(allDates)].sort().reverse();
+
+    let streak = 0;
+    if (uniqueDates.length > 0) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const mostRecent = new Date(uniqueDates[0]);
+        mostRecent.setHours(0, 0, 0, 0);
+        const diffDays = Math.floor((today - mostRecent) / (1000 * 60 * 60 * 24));
+
+        if (diffDays <= 1) {
+            streak = 1;
+            for (let i = 1; i < uniqueDates.length; i++) {
+                const prev = new Date(uniqueDates[i - 1]);
+                const curr = new Date(uniqueDates[i]);
+                prev.setHours(0, 0, 0, 0);
+                curr.setHours(0, 0, 0, 0);
+                const gap = Math.floor((prev - curr) / (1000 * 60 * 60 * 24));
+                if (gap === 1) {
+                    streak++;
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    document.getElementById('pixelStreakValue').textContent = streak;
+    const streakEl = document.getElementById('pixelStreak');
+    if (streak >= 7) {
+        streakEl.classList.add('on-fire');
+    } else {
+        streakEl.classList.remove('on-fire');
+    }
+
+    // --- Sound Toggle (Feature 8) ---
+    document.getElementById('pixelSoundIcon').textContent = PixelSound._enabled ? '🔊' : '🔇';
+    const soundBtn = document.getElementById('pixelSoundToggle');
+    const newSoundBtn = soundBtn.cloneNode(true);
+    soundBtn.parentNode.replaceChild(newSoundBtn, soundBtn);
+    newSoundBtn.addEventListener('click', () => PixelSound.toggle());
 
     // --- Quest Log (Recent Activities) ---
     const questLog = document.getElementById('pixelQuestLog');
@@ -993,42 +1185,27 @@ function renderPixelDashboard() {
     records.forEach(r => {
         const typeInfo = REPAIR_TYPES[r.type] || REPAIR_TYPES.other;
         activities.push({
-            date: r.date,
-            type: 'repair',
-            emoji: typeInfo.emoji,
-            title: typeInfo.label,
+            date: r.date, type: 'repair', emoji: typeInfo.emoji, title: typeInfo.label,
             meta: `${getVehicleShort(r.vehicleId)} · ${r.shop || '-'}`,
-            cost: r.cost || 0,
-            badgeClass: 'repair',
-            badgeLabel: '⚔ ซ่อม'
+            cost: r.cost || 0, badgeClass: 'repair', badgeLabel: '⚔ ซ่อม'
         });
     });
 
     fuelLogs.forEach(f => {
         const fuelInfo = (typeof FUEL_TYPES !== 'undefined' && FUEL_TYPES[f.fuelType]) || { emoji: '⛽', label: f.fuelType || 'น้ำมัน' };
         activities.push({
-            date: f.date,
-            type: 'fuel',
-            emoji: fuelInfo.emoji,
-            title: `เติม${fuelInfo.label}`,
+            date: f.date, type: 'fuel', emoji: fuelInfo.emoji, title: `เติม${fuelInfo.label}`,
             meta: `${getVehicleShort(f.vehicleId)}${f.liters ? ' · ' + f.liters + ' ลิตร' : ''}`,
-            cost: f.totalCost || 0,
-            badgeClass: 'fuel',
-            badgeLabel: '🧪 เติม'
+            cost: f.totalCost || 0, badgeClass: 'fuel', badgeLabel: '🧪 เติม'
         });
     });
 
     chargeLogs.forEach(c => {
         const chargeInfo = (typeof CHARGE_TYPES !== 'undefined' && CHARGE_TYPES[c.chargeType]) || { emoji: '⚡', label: c.chargeType || 'ชาร์จ' };
         activities.push({
-            date: c.date,
-            type: 'charge',
-            emoji: chargeInfo.emoji || '⚡',
-            title: `ชาร์จ ${chargeInfo.label || 'EV'}`,
+            date: c.date, type: 'charge', emoji: chargeInfo.emoji || '⚡', title: `ชาร์จ ${chargeInfo.label || 'EV'}`,
             meta: `${getVehicleShort(c.vehicleId)}${c.kwh ? ' · ' + c.kwh + ' kWh' : ''}`,
-            cost: c.totalCost || 0,
-            badgeClass: 'charge',
-            badgeLabel: '⚡ ชาร์จ'
+            cost: c.totalCost || 0, badgeClass: 'charge', badgeLabel: '⚡ ชาร์จ'
         });
     });
 
@@ -1073,11 +1250,8 @@ function renderPixelDashboard() {
             const days = daysUntil(r.nextDate);
             const isOverdue = days < 0;
             const isToday = days === 0;
-            const daysText = isOverdue
-                ? `เกิน ${Math.abs(days)} วัน!`
-                : isToday ? '🔥 วันนี้!' : `อีก ${days} วัน`;
+            const daysText = isOverdue ? `เกิน ${Math.abs(days)} วัน!` : isToday ? '🔥 วันนี้!' : `อีก ${days} วัน`;
             const daysClass = isOverdue ? 'overdue' : isToday ? 'today' : '';
-
             return `
                 <div class="pixel-upcoming-item">
                     <div class="pixel-upcoming-date">
@@ -1092,6 +1266,152 @@ function renderPixelDashboard() {
                 </div>`;
         }).join('');
     }
+
+    // --- Achievement System (Feature 3) ---
+    const achievementsContainer = document.getElementById('pixelAchievements');
+    const unlockedIds = JSON.parse(localStorage.getItem('pixelAchievementsUnlocked') || '[]');
+    let newUnlocks = false;
+
+    let achHtml = '<div class="pixel-badge-grid">';
+    PIXEL_ACHIEVEMENTS.forEach(ach => {
+        const isUnlocked = ach.check(vehicles, records, fuelLogs, chargeLogs);
+        if (isUnlocked && !unlockedIds.includes(ach.id)) {
+            unlockedIds.push(ach.id);
+            newUnlocks = true;
+        }
+        const lockedClass = isUnlocked ? 'unlocked' : 'locked';
+        achHtml += `
+            <div class="pixel-badge ${lockedClass}" title="${ach.desc}">
+                <div class="pixel-badge-icon">${isUnlocked ? ach.emoji : '🔒'}</div>
+                <div class="pixel-badge-name">${ach.name}</div>
+                <div class="pixel-badge-desc">${ach.desc}</div>
+            </div>`;
+    });
+    achHtml += '</div>';
+    const unlockedCount = PIXEL_ACHIEVEMENTS.filter(a => a.check(vehicles, records, fuelLogs, chargeLogs)).length;
+    achHtml += `<div class="pixel-badge-count">${unlockedCount} / ${PIXEL_ACHIEVEMENTS.length} ปลดล็อคแล้ว</div>`;
+    achievementsContainer.innerHTML = achHtml;
+
+    if (newUnlocks) {
+        localStorage.setItem('pixelAchievementsUnlocked', JSON.stringify(unlockedIds));
+        PixelSound.play('achievement');
+    }
+
+    // --- Monthly Challenge (Feature 4) ---
+    const challengeContainer = document.getElementById('pixelChallenge');
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const monthlyRepair = records
+        .filter(r => { const d = new Date(r.date); return d.getMonth() === currentMonth && d.getFullYear() === currentYear; })
+        .reduce((s, r) => s + (r.cost || 0), 0);
+    const monthlyFuel = fuelLogs
+        .filter(f => { const d = new Date(f.date); return d.getMonth() === currentMonth && d.getFullYear() === currentYear; })
+        .reduce((s, f) => s + (f.totalCost || 0), 0);
+    const monthlyCharge = chargeLogs
+        .filter(c => { const d = new Date(c.date); return d.getMonth() === currentMonth && d.getFullYear() === currentYear; })
+        .reduce((s, c) => s + (c.totalCost || 0), 0);
+    const monthlyTotal = monthlyRepair + monthlyFuel + monthlyCharge;
+
+    // Goal based on average past spending or default ฿5,000
+    const allActivityDates = activities.map(a => new Date(a.date)).filter(d => !isNaN(d));
+    let monthlyGoal = 5000;
+    if (allActivityDates.length > 0) {
+        const totalCost = totalRepairCost + totalFuelCost + totalChargeCost;
+        const minDate = new Date(Math.min(...allActivityDates));
+        const monthsActive = Math.max(1, (currentYear - minDate.getFullYear()) * 12 + (currentMonth - minDate.getMonth()) + 1);
+        const avgMonthly = totalCost / monthsActive;
+        monthlyGoal = Math.max(1000, Math.ceil(avgMonthly / 1000) * 1000);
+    }
+
+    const challengePercent = monthlyGoal > 0 ? Math.min((monthlyTotal / monthlyGoal) * 100, 100) : 0;
+    const isOverBudget = monthlyTotal > monthlyGoal;
+    const challengeBarClass = isOverBudget ? 'over-budget' : challengePercent > 70 ? 'warning' : '';
+
+    challengeContainer.innerHTML = `
+        <div class="pixel-challenge-content">
+            <div class="pixel-challenge-title">
+                ${isOverBudget ? '💥' : '🎯'} เป้าหมายเดือน${THAI_MONTHS_FULL[currentMonth]} ${currentYear + 543}
+            </div>
+            <div class="pixel-challenge-stats">
+                <span class="pixel-challenge-spent">ใช้ไป: ${formatCurrency(monthlyTotal)}</span>
+                <span class="pixel-challenge-goal">เป้าหมาย: ${formatCurrency(monthlyGoal)}</span>
+            </div>
+            <div class="pixel-challenge-bar-track">
+                <div class="pixel-challenge-bar-fill ${challengeBarClass}" style="width: ${challengePercent}%"></div>
+            </div>
+            <div class="pixel-challenge-breakdown">
+                <span>🔧 ซ่อม: ${formatCurrency(monthlyRepair)}</span>
+                <span>⛽ น้ำมัน: ${formatCurrency(monthlyFuel)}</span>
+                <span>⚡ ชาร์จ: ${formatCurrency(monthlyCharge)}</span>
+            </div>
+            ${isOverBudget ? '<div class="pixel-challenge-warning">⚠️ เกินงบประมาณแล้ว!</div>' : monthlyTotal === 0 ? '<div class="pixel-challenge-ok">✨ ยังไม่มีค่าใช้จ่ายเดือนนี้</div>' : `<div class="pixel-challenge-ok">เหลือ ${formatCurrency(monthlyGoal - monthlyTotal)}</div>`}
+        </div>`;
+
+    // --- Vehicle Ranking / Leaderboard (Feature 6) ---
+    const leaderboardContainer = document.getElementById('pixelLeaderboard');
+    if (vehicles.length === 0) {
+        leaderboardContainer.innerHTML = `
+            <div class="pixel-empty-quest">
+                <span>ยังไม่มีรถในทีม</span>
+                <span class="pixel-hint">เพิ่มรถเพื่อดูอันดับ!</span>
+            </div>`;
+    } else {
+        const vehicleStats = vehicles.map(v => {
+            const repairCost = records.filter(r => r.vehicleId === v.id).reduce((s, r) => s + (r.cost || 0), 0);
+            const fuelCost = fuelLogs.filter(f => f.vehicleId === v.id).reduce((s, f) => s + (f.totalCost || 0), 0);
+            const chargeCost = chargeLogs.filter(c => c.vehicleId === v.id).reduce((s, c) => s + (c.totalCost || 0), 0);
+            const totalCost = repairCost + fuelCost + chargeCost;
+            const actCount = records.filter(r => r.vehicleId === v.id).length +
+                fuelLogs.filter(f => f.vehicleId === v.id).length +
+                chargeLogs.filter(c => c.vehicleId === v.id).length;
+            return { ...v, totalCost, actCount, repairCost, fuelCost, chargeCost };
+        }).sort((a, b) => b.totalCost - a.totalCost);
+
+        const maxCost = vehicleStats[0]?.totalCost || 1;
+        const medals = ['🥇', '🥈', '🥉'];
+
+        leaderboardContainer.innerHTML = vehicleStats.map((vs, idx) => {
+            const barWidth = maxCost > 0 ? Math.max((vs.totalCost / maxCost) * 100, 2) : 2;
+            const medal = idx < 3 ? medals[idx] : `#${idx + 1}`;
+            return `
+                <div class="pixel-lb-item">
+                    <div class="pixel-lb-rank">${medal}</div>
+                    <div class="pixel-lb-info">
+                        <span class="pixel-lb-name">${escapeHTML(vs.brand)} ${escapeHTML(vs.model)}</span>
+                        <span class="pixel-lb-plate">${escapeHTML(vs.plate)}</span>
+                        <div class="pixel-lb-bar-track">
+                            <div class="pixel-lb-bar-fill" style="width: ${barWidth}%"></div>
+                        </div>
+                    </div>
+                    <div class="pixel-lb-stats">
+                        <span class="pixel-lb-cost">${formatCurrency(vs.totalCost)}</span>
+                        <span class="pixel-lb-acts">${vs.actCount} quests</span>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    // --- Daily Tip (Feature 5) ---
+    const tipContainer = document.getElementById('pixelDailyTip');
+    const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+    const todayTip = PIXEL_DAILY_TIPS[dayOfYear % PIXEL_DAILY_TIPS.length];
+
+    tipContainer.innerHTML = `
+        <div class="pixel-tip-content">
+            <div class="pixel-tip-chest">
+                <span class="pixel-tip-chest-icon">📦</span>
+                <span class="pixel-tip-label">Daily Chest Opened!</span>
+            </div>
+            <div class="pixel-tip-message">
+                <span class="pixel-tip-emoji">${todayTip.emoji}</span>
+                <span class="pixel-tip-text">${todayTip.tip}</span>
+            </div>
+            <div class="pixel-tip-footer">
+                กลับมาดูเคล็ดลับใหม่พรุ่งนี้! ✨
+            </div>
+        </div>`;
 }
 
 // Dashboard
@@ -3492,6 +3812,196 @@ function initLightbox() {
 }
 
 // ==========================================
+// Backup Import/Export
+// ==========================================
+let _pendingBackupData = null;
+
+function exportBackup() {
+    const vehicles = DB.getVehicles();
+    const records = DB.getRecords();
+    const fuelLogs = DB.getFuelLogs();
+    const chargeLogs = DB.getChargeLogs();
+
+    const totalItems = vehicles.length + records.length + fuelLogs.length + chargeLogs.length;
+    if (totalItems === 0) {
+        showToast('ไม่มีข้อมูลสำหรับสำรอง', 'info');
+        return;
+    }
+
+    const backup = {
+        appName: 'CarCare Pro',
+        version: 1,
+        exportDate: new Date().toISOString(),
+        data: {
+            vehicles: vehicles,
+            records: records,
+            fuelLogs: fuelLogs,
+            chargeLogs: chargeLogs
+        }
+    };
+
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `CarCarePro_Backup_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+
+    showToast(`สำรองข้อมูลสำเร็จ (${totalItems} รายการ)`);
+}
+
+function importBackup() {
+    const fileInput = document.getElementById('backupFileInput');
+    fileInput.value = '';
+    fileInput.click();
+}
+
+function handleBackupFile(file) {
+    if (!file || !file.name.endsWith('.json')) {
+        showToast('กรุณาเลือกไฟล์ .json', 'error');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+
+            // Validate format
+            if (!data.appName || data.appName !== 'CarCare Pro' || !data.data) {
+                showToast('ไฟล์นี้ไม่ใช่ข้อมูลสำรองของ CarCare Pro', 'error');
+                return;
+            }
+
+            _pendingBackupData = data;
+            showImportPreview(data, file.name);
+        } catch (err) {
+            console.error('Backup parse error:', err);
+            showToast('ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบ format', 'error');
+        }
+    };
+    reader.readAsText(file);
+}
+
+function showImportPreview(data, fileName) {
+    const vehicles = data.data.vehicles || [];
+    const records = data.data.records || [];
+    const fuelLogs = data.data.fuelLogs || [];
+    const chargeLogs = data.data.chargeLogs || [];
+
+    document.getElementById('backupFileName').textContent = fileName;
+
+    if (data.exportDate) {
+        const d = new Date(data.exportDate);
+        document.getElementById('backupExportDate').textContent =
+            `สำรองเมื่อ ${d.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`;
+    } else {
+        document.getElementById('backupExportDate').textContent = '—';
+    }
+
+    document.getElementById('backupStatVehicles').textContent = vehicles.length;
+    document.getElementById('backupStatRecords').textContent = records.length;
+    document.getElementById('backupStatFuel').textContent = fuelLogs.length;
+    document.getElementById('backupStatCharge').textContent = chargeLogs.length;
+
+    // Reset PIN inputs
+    document.querySelectorAll('#backupImportModal .backup-pin').forEach(d => { d.value = ''; d.classList.remove('error'); });
+    document.getElementById('backupPinError').textContent = '';
+
+    // Reset mode to merge
+    const mergeRadio = document.querySelector('input[name="importMode"][value="merge"]');
+    if (mergeRadio) mergeRadio.checked = true;
+
+    openModal('backupImportModal');
+
+    setTimeout(() => {
+        const first = document.querySelector('#backupImportModal .backup-pin[data-idx="0"]');
+        if (first) first.focus();
+    }, 300);
+}
+
+function processImport() {
+    // Verify PIN
+    const digits = document.querySelectorAll('#backupImportModal .backup-pin');
+    const pin = Array.from(digits).map(d => d.value).join('');
+    const errorEl = document.getElementById('backupPinError');
+
+    if (pin.length < 4) {
+        errorEl.textContent = 'กรุณากรอกรหัส PIN 4 หลัก';
+        digits.forEach(d => d.classList.add('error'));
+        setTimeout(() => digits.forEach(d => d.classList.remove('error')), 1500);
+        return;
+    }
+
+    if (!DB.verifyPin(pin)) {
+        errorEl.textContent = 'รหัส PIN ไม่ถูกต้อง';
+        digits.forEach(d => { d.value = ''; d.classList.add('error'); });
+        digits[0].focus();
+        setTimeout(() => digits.forEach(d => d.classList.remove('error')), 1500);
+        return;
+    }
+
+    if (!_pendingBackupData) {
+        showToast('ไม่พบข้อมูลสำรอง', 'error');
+        return;
+    }
+
+    const mode = document.querySelector('input[name="importMode"]:checked').value;
+    const importData = _pendingBackupData.data;
+
+    if (mode === 'overwrite') {
+        // Overwrite: replace everything
+        DB.saveVehicles(importData.vehicles || []);
+        DB.saveRecords(importData.records || []);
+        DB.saveFuelLogs(importData.fuelLogs || []);
+        DB.saveChargeLogs(importData.chargeLogs || []);
+        showToast('กู้คืนข้อมูลสำเร็จ (เขียนทับ)');
+    } else {
+        // Merge: add only new items (skip existing IDs)
+        const existVehicleIds = new Set(DB.getVehicles().map(v => v.id));
+        const existRecordIds = new Set(DB.getRecords().map(r => r.id));
+        const existFuelIds = new Set(DB.getFuelLogs().map(f => f.id));
+        const existChargeIds = new Set(DB.getChargeLogs().map(c => c.id));
+
+        const newVehicles = (importData.vehicles || []).filter(v => !existVehicleIds.has(v.id));
+        const newRecords = (importData.records || []).filter(r => !existRecordIds.has(r.id));
+        const newFuel = (importData.fuelLogs || []).filter(f => !existFuelIds.has(f.id));
+        const newCharge = (importData.chargeLogs || []).filter(c => !existChargeIds.has(c.id));
+
+        if (newVehicles.length > 0) DB.saveVehicles([...DB.getVehicles(), ...newVehicles]);
+        if (newRecords.length > 0) DB.saveRecords([...DB.getRecords(), ...newRecords]);
+        if (newFuel.length > 0) DB.saveFuelLogs([...DB.getFuelLogs(), ...newFuel]);
+        if (newCharge.length > 0) DB.saveChargeLogs([...DB.getChargeLogs(), ...newCharge]);
+
+        const totalNew = newVehicles.length + newRecords.length + newFuel.length + newCharge.length;
+        showToast(`กู้คืนข้อมูลสำเร็จ (เพิ่ม ${totalNew} รายการใหม่)`);
+    }
+
+    // Cleanup and re-render
+    _pendingBackupData = null;
+    closeModal('backupImportModal');
+    updateVehicleSelects();
+    renderDashboard();
+    renderVehicles();
+    renderRecords();
+    if (typeof renderFuelLogs === 'function') renderFuelLogs();
+    if (typeof renderChargeLogs === 'function') renderChargeLogs();
+    if (typeof renderAnalytics === 'function') renderAnalytics();
+}
+
+function initBackup() {
+    document.getElementById('btnBackupExport').addEventListener('click', exportBackup);
+    document.getElementById('btnBackupImport').addEventListener('click', importBackup);
+    document.getElementById('backupFileInput').addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleBackupFile(e.target.files[0]);
+    });
+    document.getElementById('btnConfirmImport').addEventListener('click', processImport);
+    initPinDigitInputs(document.querySelectorAll('#backupImportModal .backup-pin'));
+}
+
+// ==========================================
 // Initialize App
 // ==========================================
 function init() {
@@ -3514,6 +4024,7 @@ function init() {
     initDeleteConfirm();
     initSettings();
     initLightbox();
+    initBackup();
 
     // Firebase Auth (will trigger data load + PIN check)
     initAuth();
