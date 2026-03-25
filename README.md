@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="icon.svg" alt="CarCare Pro Logo" width="120" style="border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 20px;">
+  <img src="carcarepro/logo.png" alt="CarCare Pro Logo" width="200" style="border-radius: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); margin-bottom: 20px;">
   <h1>🚗 CarCare Pro v1.0.2</h1>
   <p><strong>แอปพลิเคชันจัดการทุกเรื่องรถคู่ใจ ให้กลายเป็นเรื่องง่ายและสนุกกว่าเดิม!</strong></p>
   <p>
