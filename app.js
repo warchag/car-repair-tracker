@@ -1186,7 +1186,7 @@ function renderPixelDashboard() {
         const typeInfo = REPAIR_TYPES[r.type] || REPAIR_TYPES.other;
         activities.push({
             date: r.date, type: 'repair', emoji: typeInfo.emoji, title: typeInfo.label,
-            meta: `${getVehicleShort(r.vehicleId)} · ${r.shop || '-'}`,
+            meta: `${getVehicleShort(r.vehicleId)} · ${escapeHTML(r.shop || '-')}`,
             cost: r.cost || 0, badgeClass: 'repair', badgeLabel: '⚔ ซ่อม'
         });
     });
@@ -1452,7 +1452,7 @@ function renderDashboard() {
             emoji: typeInfo.emoji,
             title: typeInfo.label,
             badge: `<span class="status-badge ${statusInfo.class}">${statusInfo.label}</span>`,
-            meta: `🚗 ${getVehicleShort(r.vehicleId)} · 🏪 ${r.shop || '-'}`,
+            meta: `🚗 ${getVehicleShort(r.vehicleId)} · 🏪 ${escapeHTML(r.shop || '-')}`,
             cost: r.cost || 0,
             accentColor: '#ef4444'
         });
@@ -2500,18 +2500,12 @@ function initFuelFilters() {
 function initFuelExport() {
     const btnCSV = document.getElementById('btnExportFuelCSV');
     const btnPDF = document.getElementById('btnExportFuelPDF');
-    if (btnCSV) btnCSV.addEventListener('click', exportFuelCSV);
-    if (btnPDF) btnPDF.addEventListener('click', exportFuelPDF);
+    if (btnCSV) btnCSV.addEventListener('click', () => showExportModal('fuel', 'csv'));
+    if (btnPDF) btnPDF.addEventListener('click', () => showExportModal('fuel', 'pdf'));
 }
 
-function exportFuelCSV() {
-    const fuelLogs = DB.getFuelLogs();
+function executeExportFuelCSV(fuelLogs, config) {
     const vehicles = DB.getVehicles();
-
-    if (fuelLogs.length === 0) {
-        showToast('ไม่มีข้อมูลน้ำมันสำหรับส่งออก', 'info');
-        return;
-    }
 
     const headers = ['วันที่', 'รถ', 'ทะเบียน', 'ประเภทน้ำมัน', 'จำนวนลิตร', 'ราคาต่อลิตร(บาท)', 'ราคารวม(บาท)', 'เลขไมล์', 'เติมเต็มถัง', 'ชื่อปั๊ม', 'หมายเหตุ'];
 
@@ -2545,89 +2539,42 @@ function exportFuelCSV() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `carcare_fuel_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    const vName = config.vehicleId === 'all' ? 'All' : (vehicles.find(v => v.id === config.vehicleId)?.plate || 'Unknown').replace(/\s/g, '_');
+    link.download = `CarCarePro_Fuel_${vName}_${config.dateSuffix}.csv`;
+    
     link.click();
     URL.revokeObjectURL(url);
 
     showToast('ส่งออกข้อมูลน้ำมันเป็น CSV สำเร็จ');
 }
 
-function exportFuelPDF() {
-    const allFuelLogs = DB.getFuelLogs();
+function executeExportFuelPDF(fuelLogs, config) {
     const vehicles = DB.getVehicles();
-
-    if (allFuelLogs.length === 0) {
-        showToast('ไม่มีข้อมูลน้ำมันสำหรับส่งออก PDF', 'info');
-        return;
-    }
-
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;';
-
-    const vehicleOptions = vehicles.map(v => {
-        const count = allFuelLogs.filter(f => f.vehicleId === v.id).length;
-        return `<button class="pdf-vehicle-btn" data-id="${v.id}" style="width:100%;padding:12px 16px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-primary);color:var(--text-primary);cursor:pointer;text-align:left;font-family:inherit;font-size:0.95rem;transition:all 0.15s ease;display:flex;justify-content:space-between;align-items:center;">
-            <span><strong>${v.brand} ${v.model}</strong> <span style="color:var(--text-muted);font-size:0.85rem;">${v.plate || ''}</span></span>
-            <span style="color:var(--text-muted);font-size:0.8rem;">${count} รายการ</span>
-        </button>`;
-    }).join('');
-
-    overlay.innerHTML = `
-        <div style="background:var(--bg-secondary);border-radius:16px;padding:24px;width:90%;max-width:400px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-            <h3 style="margin:0 0 4px;font-size:1.1rem;color:var(--text-primary);">⛽ ส่งออกรายงานน้ำมัน PDF</h3>
-            <p style="margin:0 0 16px;font-size:0.85rem;color:var(--text-muted);">เลือกรถที่ต้องการออกรายงาน</p>
-            <button class="pdf-vehicle-btn" data-id="all" style="width:100%;padding:12px 16px;margin-bottom:12px;border:2px solid var(--accent-green);border-radius:10px;background:rgba(34,197,94,0.1);color:var(--accent-green);cursor:pointer;text-align:center;font-family:inherit;font-size:0.95rem;font-weight:600;transition:all 0.15s ease;">
-                ⛽ ออกรายงานทุกคัน (${allFuelLogs.length} รายการ)
-            </button>
-            <div style="height:1px;background:var(--border-color);margin-bottom:12px;"></div>
-            ${vehicleOptions}
-            <button id="fuelPdfCancelBtn" style="width:100%;padding:10px;margin-top:4px;border:1px solid var(--border-color);border-radius:10px;background:transparent;color:var(--text-muted);cursor:pointer;font-family:inherit;font-size:0.9rem;">ยกเลิก</button>
-        </div>`;
-
-    document.body.appendChild(overlay);
-    overlay.querySelector('#fuelPdfCancelBtn').addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-
-    overlay.querySelectorAll('.pdf-vehicle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const selectedId = btn.dataset.id;
-            overlay.remove();
-            generateFuelPDF(selectedId);
-        });
-    });
-}
-
-function generateFuelPDF(vehicleId) {
-    const allFuelLogs = DB.getFuelLogs();
     const allVehicles = DB.getVehicles();
-    const isAll = vehicleId === 'all';
-    const vehicles = isAll ? allVehicles : allVehicles.filter(v => v.id === vehicleId);
-    const fuelLogs = isAll ? allFuelLogs : allFuelLogs.filter(f => f.vehicleId === vehicleId);
-
-    if (fuelLogs.length === 0) {
-        showToast('ไม่มีข้อมูลน้ำมันสำหรับรถคันนี้', 'info');
-        return;
-    }
+    const isAll = config.vehicleId === 'all';
+    const reportVehicles = isAll ? allVehicles : allVehicles.filter(v => v.id === config.vehicleId);
 
     showToast('กำลังสร้าง PDF...', 'info');
 
     const today = new Date();
-    const dateStr = `${today.getDate()} ${THAI_MONTHS_FULL[today.getMonth()]} ${today.getFullYear() + 543} `;
+    const dateStr = `${today.getDate()} ${THAI_MONTHS_FULL[today.getMonth()]} ${today.getFullYear() + 543}`;
     const totalCost = fuelLogs.reduce((sum, f) => sum + (f.totalCost || 0), 0);
     const totalLiters = fuelLogs.reduce((sum, f) => sum + (f.liters || 0), 0);
     const sortedLogs = [...fuelLogs].sort((a, b) => new Date(b.date) - new Date(a.date));
-    const titleText = isAll ? 'รายงานน้ำมันทุกคัน' : `${vehicles[0].brand} ${vehicles[0].model} (${vehicles[0].plate || '-'})`;
+    const titleText = isAll ? 'รายงานน้ำมันทุกคัน' : `${reportVehicles[0].brand} ${reportVehicles[0].model} (${reportVehicles[0].plate || '-'})`;
 
     // Vehicle summary cards
-    const vehicleCards = vehicles.map(v => {
+    const vehicleCards = reportVehicles.map(v => {
         const vLogs = fuelLogs.filter(f => f.vehicleId === v.id);
+        if (vLogs.length === 0) return '';
         const vCost = vLogs.reduce((sum, f) => sum + (f.totalCost || 0), 0);
         const vLiters = vLogs.reduce((sum, f) => sum + (f.liters || 0), 0);
         const eff = calculateFuelEfficiency(v.id);
-        return `<div style = "background:#f0fdf4;border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:4px solid #22c55e;" >
+        return `<div style="background:#f0fdf4;border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:4px solid #22c55e;">
             <div style="font-weight:700;font-size:14px;color:#14532d;">${v.brand} ${v.model} ${v.year ? '(' + v.year + ')' : ''}</div>
             <div style="font-size:12px;color:#64748b;margin-top:4px;">ทะเบียน: ${v.plate || '-'} | เติม ${vLogs.length} ครั้ง | ${vLiters.toFixed(1)} ล. | ฿${Number(vCost).toLocaleString('th-TH')}${eff ? ' | ' + eff + ' กม./ล.' : ''}</div>
-        </div> `;
+        </div>`;
     }).join('');
 
     // Fuel type summary
@@ -2661,7 +2608,7 @@ function generateFuelPDF(vehicleId) {
             <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${typeInfo.emoji} ${typeInfo.label}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;">${f.liters ? f.liters.toFixed(1) : '-'}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;">฿${f.pricePerLiter ? f.pricePerLiter.toFixed(2) : '-'}</td>
-            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${f.station || '-'}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${escapeHTML(f.station || '-')}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;font-weight:600;">฿${Number(f.totalCost || 0).toLocaleString('th-TH')}</td>
         </tr>`;
     }).join('');
@@ -2674,6 +2621,7 @@ function generateFuelPDF(vehicleId) {
         <div style="background:linear-gradient(135deg,#14532d,#166534);color:white;padding:28px 32px;border-radius:12px;margin-bottom:24px;">
             <div style="font-size:24px;font-weight:800;">⛽ CarCare Pro — รายงานน้ำมัน</div>
             <div style="font-size:13px;opacity:0.85;margin-top:4px;">${titleText}</div>
+            <div style="font-size:13px;opacity:0.85;margin-top:2px;">ช่วงเวลา: ${config.periodLabel}</div>
             <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.15);display:flex;gap:32px;flex-wrap:wrap;">
                 <div><div style="font-size:10px;opacity:0.6;">วันที่สร้างรายงาน</div><div style="font-size:14px;font-weight:600;">${dateStr}</div></div>
                 <div><div style="font-size:10px;opacity:0.6;">จำนวนครั้งเติม</div><div style="font-size:14px;font-weight:600;">${fuelLogs.length} ครั้ง</div></div>
@@ -2685,7 +2633,7 @@ function generateFuelPDF(vehicleId) {
 
         <div style="margin-bottom:24px;">
             <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#14532d;">🚗 ข้อมูลรถ</div>
-            ${vehicleCards}
+            ${vehicleCards || '<div style="font-size:12px;color:#64748b;">ไม่มีข้อมูลรถ</div>'}
         </div>
 
         <div style="margin-bottom:24px;">
@@ -2719,7 +2667,7 @@ function generateFuelPDF(vehicleId) {
         <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;">
             สร้างโดย CarCare Pro — ${dateStr}
         </div>
-    </div> `;
+    </div>`;
 
     const container = document.createElement('div');
     container.innerHTML = html;
@@ -2729,9 +2677,11 @@ function generateFuelPDF(vehicleId) {
     container.style.width = '794px';
     document.body.appendChild(container);
 
+    const vName = isAll ? 'All' : (reportVehicles[0].plate || reportVehicles[0].brand).replace(/\s/g, '_');
+    
     const opt = {
         margin: [10, 10, 10, 10],
-        filename: `CarCarePro_Fuel_${isAll ? 'All' : (vehicles[0].plate || vehicles[0].brand).replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
+        filename: `CarCarePro_Fuel_${vName}_${config.dateSuffix}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, letterRendering: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -3056,14 +3006,12 @@ function renderChargePriceChart(logs) {
 function initChargeExport() {
     const btnCSV = document.getElementById('btnExportChargeCSV');
     const btnPDF = document.getElementById('btnExportChargePDF');
-    if (btnCSV) btnCSV.addEventListener('click', exportChargeCSV);
-    if (btnPDF) btnPDF.addEventListener('click', exportChargePDF);
+    if (btnCSV) btnCSV.addEventListener('click', () => showExportModal('charge', 'csv'));
+    if (btnPDF) btnPDF.addEventListener('click', () => showExportModal('charge', 'pdf'));
 }
 
-function exportChargeCSV() {
-    const logs = DB.getChargeLogs();
+function executeExportChargeCSV(logs, config) {
     const vehicles = DB.getVehicles();
-    if (logs.length === 0) { showToast('ไม่มีข้อมูลชาร์จสำหรับส่งออก', 'info'); return; }
     const headers = ['วันที่', 'รถ', 'ทะเบียน', 'ประเภทชาร์จ', 'ผู้ให้บริการ', 'พลังงาน(kWh)', 'ค่าไฟ(บาท/kWh)', 'ราคารวม(บาท)', 'เลขไมล์', '%แบตเริ่ม', '%แบตจบ', 'สถานี', 'หมายเหตุ'];
     const rows = logs.map(l => {
         const v = vehicles.find(v => v.id === l.vehicleId);
@@ -3075,32 +3023,21 @@ function exportChargeCSV() {
     });
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `carcare_charge_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+    const a = document.createElement('a'); a.href = url;
+    const vName = config.vehicleId === 'all' ? 'All' : (vehicles.find(v => v.id === config.vehicleId)?.plate || 'Unknown').replace(/\s/g, '_');
+    a.download = `CarCarePro_Charge_${vName}_${config.dateSuffix}.csv`;
+    a.click();
     URL.revokeObjectURL(url);
     showToast('ส่งออกข้อมูลชาร์จเป็น CSV สำเร็จ');
 }
 
-function exportChargePDF() {
-    const allLogs = DB.getChargeLogs();
-    const vehicles = DB.getVehicles();
-    if (allLogs.length === 0) { showToast('ไม่มีข้อมูลชาร์จสำหรับส่งออก PDF', 'info'); return; }
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;';
-    const opts = vehicles.map(v => { const c = allLogs.filter(l => l.vehicleId === v.id).length; return `<button class="pdf-vehicle-btn" data-id="${v.id}" style="width:100%;padding:12px 16px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-primary);color:var(--text-primary);cursor:pointer;text-align:left;font-family:inherit;font-size:0.95rem;display:flex;justify-content:space-between;align-items:center;"><span><strong>${v.brand} ${v.model}</strong> <span style="color:var(--text-muted);font-size:0.85rem;">${v.plate || ''}</span></span><span style="color:var(--text-muted);font-size:0.8rem;">${c} รายการ</span></button>`; }).join('');
-    overlay.innerHTML = `<div style="background:var(--bg-secondary);border-radius:16px;padding:24px;width:90%;max-width:400px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);"><h3 style="margin:0 0 4px;font-size:1.1rem;color:var(--text-primary);">⚡ ส่งออกรายงานชาร์จ PDF</h3><p style="margin:0 0 16px;font-size:0.85rem;color:var(--text-muted);">เลือกรถที่ต้องการออกรายงาน</p><button class="pdf-vehicle-btn" data-id="all" style="width:100%;padding:12px 16px;margin-bottom:12px;border:2px solid var(--accent-blue);border-radius:10px;background:rgba(59,130,246,0.1);color:var(--accent-blue);cursor:pointer;text-align:center;font-family:inherit;font-size:0.95rem;font-weight:600;">⚡ ออกรายงานทุกคัน (${allLogs.length} รายการ)</button><div style="height:1px;background:var(--border-color);margin-bottom:12px;"></div>${opts}<button id="chargePdfCancelBtn" style="width:100%;padding:10px;margin-top:4px;border:1px solid var(--border-color);border-radius:10px;background:transparent;color:var(--text-muted);cursor:pointer;font-family:inherit;font-size:0.9rem;">ยกเลิก</button></div>`;
-    document.body.appendChild(overlay);
-    overlay.querySelector('#chargePdfCancelBtn').addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-    overlay.querySelectorAll('.pdf-vehicle-btn').forEach(btn => { btn.addEventListener('click', () => { overlay.remove(); generateChargePDF(btn.dataset.id); }); });
-}
+function executeExportChargePDF(logs, config) {
+    const allVehicles = DB.getVehicles();
+    const isAll = config.vehicleId === 'all';
+    const vehicles = isAll ? allVehicles : allVehicles.filter(v => v.id === config.vehicleId);
 
-function generateChargePDF(vehicleId) {
-    const allLogs = DB.getChargeLogs(); const allVehicles = DB.getVehicles();
-    const isAll = vehicleId === 'all';
-    const vehicles = isAll ? allVehicles : allVehicles.filter(v => v.id === vehicleId);
-    const logs = isAll ? allLogs : allLogs.filter(l => l.vehicleId === vehicleId);
-    if (logs.length === 0) { showToast('ไม่มีข้อมูลชาร์จสำหรับรถคันนี้', 'info'); return; }
     showToast('กำลังสร้าง PDF...', 'info');
+
     const today = new Date();
     const dateStr = `${today.getDate()} ${THAI_MONTHS_FULL[today.getMonth()]} ${today.getFullYear() + 543}`;
     const totalCost = logs.reduce((s, l) => s + (l.totalCost || 0), 0);
@@ -3108,32 +3045,633 @@ function generateChargePDF(vehicleId) {
     const avgPrice = logs.length > 0 ? (logs.reduce((s, l) => s + (l.pricePerKwh || 0), 0) / logs.length).toFixed(2) : '-';
     const sortedLogs = [...logs].sort((a, b) => new Date(b.date) - new Date(a.date));
     const title = isAll ? 'รายงานชาร์จทุกคัน' : `${vehicles[0].brand} ${vehicles[0].model} (${vehicles[0].plate || '-'})`;
-    const vCards = vehicles.map(v => { const vL = logs.filter(l => l.vehicleId === v.id); const vC = vL.reduce((s, l) => s + (l.totalCost || 0), 0); const vK = vL.reduce((s, l) => s + (l.kwh || 0), 0); return `<div style="background:#eff6ff;border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:4px solid #3b82f6;"><div style="font-weight:700;font-size:14px;color:#1e3a5f;">${v.brand} ${v.model} ${v.year ? '(' + v.year + ')' : ''}</div><div style="font-size:12px;color:#64748b;margin-top:4px;">ทะเบียน: ${v.plate || '-'} | ชาร์จ ${vL.length} ครั้ง | ${vK.toFixed(1)} kWh | ฿${Number(vC).toLocaleString('th-TH')}</div></div>`; }).join('');
+
+    const vCards = vehicles.map(v => { 
+        const vL = logs.filter(l => l.vehicleId === v.id); 
+        if (vL.length === 0) return '';
+        const vC = vL.reduce((s, l) => s + (l.totalCost || 0), 0); 
+        const vK = vL.reduce((s, l) => s + (l.kwh || 0), 0); 
+        return `<div style="background:#eff6ff;border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:4px solid #3b82f6;"><div style="font-weight:700;font-size:14px;color:#1e3a5f;">${v.brand} ${v.model} ${v.year ? '(' + v.year + ')' : ''}</div><div style="font-size:12px;color:#64748b;margin-top:4px;">ทะเบียน: ${v.plate || '-'} | ชาร์จ ${vL.length} ครั้ง | ${vK.toFixed(1)} kWh | ฿${Number(vC).toLocaleString('th-TH')}</div></div>`; 
+    }).join('');
+
     const typeData = {}; const typeCosts = {}; const typeKwh = {};
     logs.forEach(l => { const t = l.chargeType || 'dc_fast'; typeData[t] = (typeData[t] || 0) + 1; typeCosts[t] = (typeCosts[t] || 0) + (l.totalCost || 0); typeKwh[t] = (typeKwh[t] || 0) + (l.kwh || 0); });
     const typeSumRows = Object.keys(typeData).map(t => { const ti = CHARGE_TYPES[t] || { emoji: '⚡', label: t }; return `<tr><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;font-size:12px;">${ti.emoji} ${ti.label}</td><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:center;font-size:12px;">${typeData[t]}</td><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px;">${typeKwh[t].toFixed(1)} kWh</td><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;text-align:right;font-size:12px;">฿${Number(typeCosts[t]).toLocaleString('th-TH')}</td></tr>`; }).join('');
+
     const rows = sortedLogs.map((l, i) => { const v = vehicles.find(v => v.id === l.vehicleId); const ti = CHARGE_TYPES[l.chargeType] || { emoji: '⚡', label: '-' }; const bg = i % 2 === 0 ? '#ffffff' : '#f8fafc'; return `<tr style="background:${bg};"><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;white-space:nowrap;">${formatDate(l.date)}</td><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${v ? v.plate : '-'}</td><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${ti.emoji} ${ti.label}</td><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;">${l.kwh?.toFixed(1) || '-'}</td><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;">฿${l.pricePerKwh?.toFixed(2) || '-'}</td><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${l.station || '-'}</td><td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;font-weight:600;">฿${Number(l.totalCost || 0).toLocaleString('th-TH')}</td></tr>`; }).join('');
-    const html = `<div style="font-family:'Noto Sans Thai','Inter',sans-serif;color:#1e293b;padding:0;width:100%;"><div style="background:linear-gradient(135deg,#0f172a,#1e40af);color:white;padding:28px 32px;border-radius:12px;margin-bottom:24px;"><div style="font-size:24px;font-weight:800;">⚡ CarCare Pro — รายงานการชาร์จ</div><div style="font-size:13px;opacity:0.85;margin-top:4px;">${title}</div><div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.15);display:flex;gap:32px;flex-wrap:wrap;"><div><div style="font-size:10px;opacity:0.6;">วันที่สร้าง</div><div style="font-size:14px;font-weight:600;">${dateStr}</div></div><div><div style="font-size:10px;opacity:0.6;">จำนวนครั้ง</div><div style="font-size:14px;font-weight:600;">${logs.length} ครั้ง</div></div><div><div style="font-size:10px;opacity:0.6;">พลังงานรวม</div><div style="font-size:14px;font-weight:600;">${totalKwh.toFixed(1)} kWh</div></div><div><div style="font-size:10px;opacity:0.6;">ค่าชาร์จรวม</div><div style="font-size:14px;font-weight:600;">฿${Number(totalCost).toLocaleString('th-TH')}</div></div><div><div style="font-size:10px;opacity:0.6;">ราคาเฉลี่ย/kWh</div><div style="font-size:14px;font-weight:600;">฿${avgPrice}</div></div></div></div><div style="margin-bottom:24px;"><div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#1e40af;">🚗 ข้อมูลรถ</div>${vCards}</div><div style="margin-bottom:24px;"><div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#1e40af;">📊 สรุปตามประเภทชาร์จ</div><table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;"><thead><tr style="background:#1e40af;color:white;"><th style="padding:8px 12px;text-align:left;font-size:11px;">ประเภท</th><th style="padding:8px 12px;text-align:center;font-size:11px;">จำนวน</th><th style="padding:8px 12px;text-align:right;font-size:11px;">พลังงาน</th><th style="padding:8px 12px;text-align:right;font-size:11px;">ค่าใช้จ่าย</th></tr></thead><tbody>${typeSumRows}</tbody></table></div><div style="margin-bottom:24px;"><div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#1e40af;">⚡ รายการชาร์จทั้งหมด</div><table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;"><thead><tr style="background:#1e40af;color:white;"><th style="padding:8px 10px;text-align:left;font-size:11px;">วันที่</th><th style="padding:8px 10px;text-align:left;font-size:11px;">ทะเบียน</th><th style="padding:8px 10px;text-align:left;font-size:11px;">ประเภท</th><th style="padding:8px 10px;text-align:right;font-size:11px;">kWh</th><th style="padding:8px 10px;text-align:right;font-size:11px;">฿/kWh</th><th style="padding:8px 10px;text-align:left;font-size:11px;">สถานี</th><th style="padding:8px 10px;text-align:right;font-size:11px;">รวม</th></tr></thead><tbody>${rows}</tbody></table></div><div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;">สร้างโดย CarCare Pro — ${dateStr}</div></div>`;
+
+    const html = `<div style="font-family:'Noto Sans Thai','Inter',sans-serif;color:#1e293b;padding:0;width:100%;"><div style="background:linear-gradient(135deg,#0f172a,#1e40af);color:white;padding:28px 32px;border-radius:12px;margin-bottom:24px;"><div style="font-size:24px;font-weight:800;">⚡ CarCare Pro — รายงานการชาร์จ</div><div style="font-size:13px;opacity:0.85;margin-top:4px;">${title}</div><div style="font-size:13px;opacity:0.85;margin-top:2px;">ช่วงเวลา: ${config.periodLabel}</div><div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.15);display:flex;gap:32px;flex-wrap:wrap;"><div><div style="font-size:10px;opacity:0.6;">วันที่สร้าง</div><div style="font-size:14px;font-weight:600;">${dateStr}</div></div><div><div style="font-size:10px;opacity:0.6;">จำนวนครั้ง</div><div style="font-size:14px;font-weight:600;">${logs.length} ครั้ง</div></div><div><div style="font-size:10px;opacity:0.6;">พลังงานรวม</div><div style="font-size:14px;font-weight:600;">${totalKwh.toFixed(1)} kWh</div></div><div><div style="font-size:10px;opacity:0.6;">ค่าชาร์จรวม</div><div style="font-size:14px;font-weight:600;">฿${Number(totalCost).toLocaleString('th-TH')}</div></div><div><div style="font-size:10px;opacity:0.6;">ราคาเฉลี่ย/kWh</div><div style="font-size:14px;font-weight:600;">฿${avgPrice}</div></div></div></div><div style="margin-bottom:24px;"><div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#1e40af;">🚗 ข้อมูลรถ</div>${vCards || '<div style="font-size:12px;color:#64748b;">ไม่มีข้อมูลรถ</div>'}</div><div style="margin-bottom:24px;"><div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#1e40af;">📊 สรุปตามประเภทชาร์จ</div><table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;"><thead><tr style="background:#1e40af;color:white;"><th style="padding:8px 12px;text-align:left;font-size:11px;">ประเภท</th><th style="padding:8px 12px;text-align:center;font-size:11px;">จำนวน</th><th style="padding:8px 12px;text-align:right;font-size:11px;">พลังงาน</th><th style="padding:8px 12px;text-align:right;font-size:11px;">ค่าใช้จ่าย</th></tr></thead><tbody>${typeSumRows}</tbody></table></div><div style="margin-bottom:24px;"><div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#1e40af;">⚡ รายการชาร์จทั้งหมด</div><table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;"><thead><tr style="background:#1e40af;color:white;"><th style="padding:8px 10px;text-align:left;font-size:11px;">วันที่</th><th style="padding:8px 10px;text-align:left;font-size:11px;">ทะเบียน</th><th style="padding:8px 10px;text-align:left;font-size:11px;">ประเภท</th><th style="padding:8px 10px;text-align:right;font-size:11px;">kWh</th><th style="padding:8px 10px;text-align:right;font-size:11px;">฿/kWh</th><th style="padding:8px 10px;text-align:left;font-size:11px;">สถานี</th><th style="padding:8px 10px;text-align:right;font-size:11px;">รวม</th></tr></thead><tbody>${rows}</tbody></table></div><div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;">สร้างโดย CarCare Pro — ${dateStr}</div></div>`;
+
     const el = document.createElement('div'); el.innerHTML = html; el.style.cssText = 'position:absolute;left:-9999px;top:0;width:794px;'; document.body.appendChild(el);
-    html2pdf().set({ margin: [10, 10, 10, 10], filename: `CarCarePro_Charge_${isAll ? 'All' : (vehicles[0].plate || vehicles[0].brand).replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } }).from(el.firstElementChild).save().then(() => { document.body.removeChild(el); showToast('สร้าง PDF รายงานชาร์จสำเร็จ'); }).catch(err => { document.body.removeChild(el); console.error('Charge PDF error:', err); showToast('เกิดข้อผิดพลาดในการสร้าง PDF', 'error'); });
+    
+    const vName = isAll ? 'All' : (vehicles[0].plate || vehicles[0].brand).replace(/\s/g, '_');
+
+    html2pdf().set({ margin: [10, 10, 10, 10], filename: `CarCarePro_Charge_${vName}_${config.dateSuffix}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }, pagebreak: { mode: ['avoid-all', 'css', 'legacy'] } }).from(el.firstElementChild).save().then(() => { document.body.removeChild(el); showToast('สร้าง PDF รายงานชาร์จสำเร็จ'); }).catch(err => { document.body.removeChild(el); console.error('Charge PDF error:', err); showToast('เกิดข้อผิดพลาดในการสร้าง PDF', 'error'); });
+}
+
+// ==========================================
+// Monthly Reports
+// ==========================================
+function initMonthlyReports() {
+    const monthSelect = document.getElementById('reportMonth');
+    const yearSelect = document.getElementById('reportYear');
+    const vehicleSelect = document.getElementById('reportVehicle');
+    const btnExport = document.getElementById('btnExportMonthlyPDF');
+
+    // Set current month/year
+    const now = new Date();
+    monthSelect.value = now.getMonth().toString();
+
+    // Populate year dropdown
+    const currentYear = now.getFullYear();
+    for (let y = currentYear; y >= currentYear - 5; y--) {
+        const opt = document.createElement('option');
+        opt.value = y;
+        opt.textContent = y;
+        yearSelect.appendChild(opt);
+    }
+    yearSelect.value = currentYear;
+
+    // Event listeners
+    monthSelect.addEventListener('change', renderMonthlyReport);
+    yearSelect.addEventListener('change', renderMonthlyReport);
+    vehicleSelect.addEventListener('change', renderMonthlyReport);
+    btnExport.addEventListener('click', exportMonthlyPDF);
+}
+
+function updateReportVehicleSelect() {
+    const select = document.getElementById('reportVehicle');
+    const currentVal = select.value;
+    const vehicles = DB.getVehicles();
+
+    // Keep "all" option and rebuild
+    select.innerHTML = '<option value="all">รถทุกคัน</option>';
+    vehicles.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.id;
+        opt.textContent = `${v.brand} ${v.model} (${v.plate || '-'})`;
+        select.appendChild(opt);
+    });
+
+    // Restore selection if still valid
+    if (currentVal && [...select.options].some(o => o.value === currentVal)) {
+        select.value = currentVal;
+    }
+}
+
+function getMonthlyData() {
+    const month = parseInt(document.getElementById('reportMonth').value);
+    const year = parseInt(document.getElementById('reportYear').value);
+    const vehicleId = document.getElementById('reportVehicle').value;
+
+    const isInMonth = (dateStr) => {
+        if (!dateStr) return false;
+        const d = new Date(dateStr);
+        return d.getMonth() === month && d.getFullYear() === year;
+    };
+
+    const filterVehicle = (item) => {
+        if (vehicleId === 'all') return true;
+        return item.vehicleId === vehicleId;
+    };
+
+    const repairs = DB.getRecords().filter(r => isInMonth(r.date) && filterVehicle(r));
+    const fuels = DB.getFuelLogs().filter(f => isInMonth(f.date) && filterVehicle(f));
+    const charges = DB.getChargeLogs().filter(c => isInMonth(c.date) && filterVehicle(c));
+
+    const repairCost = repairs.reduce((sum, r) => sum + (parseFloat(r.cost) || 0), 0);
+    const fuelCost = fuels.reduce((sum, f) => sum + (parseFloat(f.totalCost) || 0), 0);
+    const chargeCost = charges.reduce((sum, c) => sum + (parseFloat(c.totalCost) || 0), 0);
+    const totalCost = repairCost + fuelCost + chargeCost;
+
+    return { month, year, vehicleId, repairs, fuels, charges, repairCost, fuelCost, chargeCost, totalCost };
+}
+
+function renderMonthlyReport() {
+    updateReportVehicleSelect();
+    const data = getMonthlyData();
+    const vehicles = DB.getVehicles();
+
+    // Update summary cards
+    document.getElementById('reportRepairCost').textContent = formatCurrency(data.repairCost);
+    document.getElementById('reportFuelCost').textContent = formatCurrency(data.fuelCost);
+    document.getElementById('reportChargeCost').textContent = formatCurrency(data.chargeCost);
+    document.getElementById('reportTotalCost').textContent = formatCurrency(data.totalCost);
+
+    // Update counts
+    document.getElementById('reportRepairCount').textContent = `${data.repairs.length} รายการ`;
+    document.getElementById('reportFuelCount').textContent = `${data.fuels.length} รายการ`;
+    document.getElementById('reportChargeCount').textContent = `${data.charges.length} รายการ`;
+
+    // Render repair list
+    const repairListEl = document.getElementById('reportRepairList');
+    if (data.repairs.length === 0) {
+        repairListEl.innerHTML = '<div class="empty-state"><p>ไม่มีรายการซ่อมในเดือนนี้</p></div>';
+    } else {
+        const sortedRepairs = [...data.repairs].sort((a, b) => new Date(b.date) - new Date(a.date));
+        repairListEl.innerHTML = '<div class="report-table-wrapper"><table class="report-table"><thead><tr><th>วันที่</th><th>รถ</th><th>ประเภท</th><th>ร้าน/อู่</th><th>รายละเอียด</th><th class="text-right">ค่าใช้จ่าย</th></tr></thead><tbody>' +
+            sortedRepairs.map((r, i) => {
+                const v = vehicles.find(v => v.id === r.vehicleId);
+                const typeInfo = REPAIR_TYPES[r.type] || REPAIR_TYPES.other;
+                return `<tr class="${i % 2 === 0 ? '' : 'alt'}">
+                    <td>${formatDate(r.date)}</td>
+                    <td>${v ? escapeHTML(v.plate || `${v.brand} ${v.model}`) : '-'}</td>
+                    <td><span class="type-badge" style="--badge-color:${typeInfo.color}">${typeInfo.emoji} ${typeInfo.label}</span></td>
+                    <td>${escapeHTML(r.shop || '-')}</td>
+                    <td class="desc-cell">${escapeHTML(r.description || '-')}</td>
+                    <td class="text-right cost-cell">${formatCurrency(r.cost)}</td>
+                </tr>`;
+            }).join('') +
+            `<tr class="total-row"><td colspan="5"><strong>รวมค่าซ่อม</strong></td><td class="text-right"><strong>${formatCurrency(data.repairCost)}</strong></td></tr>` +
+            '</tbody></table></div>';
+    }
+
+    // Render fuel list
+    const fuelListEl = document.getElementById('reportFuelList');
+    if (data.fuels.length === 0) {
+        fuelListEl.innerHTML = '<div class="empty-state"><p>ไม่มีรายการเติมน้ำมันในเดือนนี้</p></div>';
+    } else {
+        const sortedFuels = [...data.fuels].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const totalLiters = sortedFuels.reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0);
+        fuelListEl.innerHTML = '<div class="report-table-wrapper"><table class="report-table"><thead><tr><th>วันที่</th><th>รถ</th><th>ประเภท</th><th>ปั๊ม</th><th class="text-right">ลิตร</th><th class="text-right">บาท/ลิตร</th><th class="text-right">ค่าใช้จ่าย</th></tr></thead><tbody>' +
+            sortedFuels.map((f, i) => {
+                const v = vehicles.find(v => v.id === f.vehicleId);
+                const fType = FUEL_TYPES[f.fuelType] || { emoji: '⛽', label: f.fuelType || '-', color: '#94a3b8' };
+                return `<tr class="${i % 2 === 0 ? '' : 'alt'}">
+                    <td>${formatDate(f.date)}</td>
+                    <td>${v ? escapeHTML(v.plate || `${v.brand} ${v.model}`) : '-'}</td>
+                    <td><span class="type-badge" style="--badge-color:${fType.color}">${fType.emoji} ${fType.label}</span></td>
+                    <td>${escapeHTML(f.station || '-')}</td>
+                    <td class="text-right">${parseFloat(f.liters || 0).toFixed(2)}</td>
+                    <td class="text-right">${parseFloat(f.pricePerLiter || 0).toFixed(2)}</td>
+                    <td class="text-right cost-cell">${formatCurrency(f.totalCost)}</td>
+                </tr>`;
+            }).join('') +
+            `<tr class="total-row"><td colspan="4"><strong>รวมค่าน้ำมัน</strong></td><td class="text-right"><strong>${totalLiters.toFixed(2)} ล.</strong></td><td></td><td class="text-right"><strong>${formatCurrency(data.fuelCost)}</strong></td></tr>` +
+            '</tbody></table></div>';
+    }
+
+    // Render charge list
+    const chargeListEl = document.getElementById('reportChargeList');
+    if (data.charges.length === 0) {
+        chargeListEl.innerHTML = '<div class="empty-state"><p>ไม่มีรายการชาร์จในเดือนนี้</p></div>';
+    } else {
+        const sortedCharges = [...data.charges].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const totalKwh = sortedCharges.reduce((sum, c) => sum + (parseFloat(c.kwh) || 0), 0);
+        chargeListEl.innerHTML = '<div class="report-table-wrapper"><table class="report-table"><thead><tr><th>วันที่</th><th>รถ</th><th>ประเภท</th><th>สถานี</th><th class="text-right">kWh</th><th class="text-right">บาท/kWh</th><th class="text-right">ค่าใช้จ่าย</th></tr></thead><tbody>' +
+            sortedCharges.map((c, i) => {
+                const v = vehicles.find(v => v.id === c.vehicleId);
+                const cType = CHARGE_TYPES[c.chargeType] || { emoji: '⚡', label: c.chargeType || '-', color: '#94a3b8' };
+                return `<tr class="${i % 2 === 0 ? '' : 'alt'}">
+                    <td>${formatDate(c.date)}</td>
+                    <td>${v ? escapeHTML(v.plate || `${v.brand} ${v.model}`) : '-'}</td>
+                    <td><span class="type-badge" style="--badge-color:${cType.color}">${cType.emoji} ${cType.label}</span></td>
+                    <td>${escapeHTML(c.station || '-')}</td>
+                    <td class="text-right">${parseFloat(c.kwh || 0).toFixed(1)}</td>
+                    <td class="text-right">${parseFloat(c.pricePerKwh || 0).toFixed(2)}</td>
+                    <td class="text-right cost-cell">${formatCurrency(c.totalCost)}</td>
+                </tr>`;
+            }).join('') +
+            `<tr class="total-row"><td colspan="4"><strong>รวมค่าชาร์จ</strong></td><td class="text-right"><strong>${totalKwh.toFixed(1)} kWh</strong></td><td></td><td class="text-right"><strong>${formatCurrency(data.chargeCost)}</strong></td></tr>` +
+            '</tbody></table></div>';
+    }
+}
+
+function exportMonthlyPDF() {
+    const data = getMonthlyData();
+    const vehicles = DB.getVehicles();
+    const isAll = data.vehicleId === 'all';
+
+    if (data.repairs.length === 0 && data.fuels.length === 0 && data.charges.length === 0) {
+        showToast('ไม่มีข้อมูลในเดือนที่เลือก', 'info');
+        return;
+    }
+
+    showToast('กำลังสร้างรายงาน PDF...', 'info');
+
+    const monthName = THAI_MONTHS_FULL[data.month];
+    const thaiYear = data.year + 543;
+    const today = new Date();
+    const dateStr = `${today.getDate()} ${THAI_MONTHS_FULL[today.getMonth()]} ${today.getFullYear() + 543}`;
+
+    const vehicleTitle = isAll ? 'รถทุกคัน' : (() => {
+        const v = vehicles.find(v => v.id === data.vehicleId);
+        return v ? `${v.brand} ${v.model} (${v.plate || '-'})` : 'ไม่ทราบ';
+    })();
+
+    // Vehicle summary cards
+    const relevantVehicles = isAll ? vehicles : vehicles.filter(v => v.id === data.vehicleId);
+    const vCards = relevantVehicles.map(v => {
+        const vRepairs = data.repairs.filter(r => r.vehicleId === v.id);
+        const vFuels = data.fuels.filter(f => f.vehicleId === v.id);
+        const vCharges = data.charges.filter(c => c.vehicleId === v.id);
+        const vTotal = vRepairs.reduce((s, r) => s + (parseFloat(r.cost) || 0), 0) +
+            vFuels.reduce((s, f) => s + (parseFloat(f.totalCost) || 0), 0) +
+            vCharges.reduce((s, c) => s + (parseFloat(c.totalCost) || 0), 0);
+        if (vTotal === 0 && vRepairs.length === 0 && vFuels.length === 0 && vCharges.length === 0) return '';
+        return `<div style="background:#f0f9ff;border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:4px solid #3b82f6;">
+            <div style="font-weight:700;font-size:14px;color:#1e3a5f;">${escapeHTML(v.brand)} ${escapeHTML(v.model)} ${v.year ? '(' + v.year + ')' : ''}</div>
+            <div style="font-size:12px;color:#64748b;margin-top:4px;">ทะเบียน: ${escapeHTML(v.plate || '-')} | ซ่อม ${vRepairs.length} ครั้ง | น้ำมัน ${vFuels.length} ครั้ง | ชาร์จ ${vCharges.length} ครั้ง | รวม ฿${Number(vTotal).toLocaleString('th-TH')}</div>
+        </div>`;
+    }).filter(c => c).join('');
+
+    // Repair summary table
+    let repairSection = '';
+    if (data.repairs.length > 0) {
+        const sortedRepairs = [...data.repairs].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const repairRows = sortedRepairs.map((r, i) => {
+            const v = vehicles.find(v => v.id === r.vehicleId);
+            const typeInfo = REPAIR_TYPES[r.type] || REPAIR_TYPES.other;
+            const bg = i % 2 === 0 ? '#ffffff' : '#f8fafc';
+            return `<tr style="background:${bg};">
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;white-space:nowrap;">${formatDate(r.date)}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${v ? escapeHTML(v.plate) : '-'}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${typeInfo.emoji} ${typeInfo.label}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${escapeHTML(r.shop || '-')}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${escapeHTML(r.description || '-')}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;font-weight:600;">฿${Number(r.cost || 0).toLocaleString('th-TH')}</td>
+            </tr>`;
+        }).join('');
+
+        repairSection = `<div style="margin-bottom:24px;">
+            <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#ea580c;">🔧 รายการซ่อม (${data.repairs.length} รายการ)</div>
+            <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;">
+                <thead><tr style="background:#ea580c;color:white;">
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">วันที่</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">ทะเบียน</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">ประเภท</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">ร้าน/อู่</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">รายละเอียด</th>
+                    <th style="padding:8px 10px;text-align:right;font-size:11px;">ค่าใช้จ่าย</th>
+                </tr></thead>
+                <tbody>${repairRows}</tbody>
+                <tfoot><tr style="background:#fff7ed;font-weight:700;">
+                    <td colspan="5" style="padding:8px 10px;font-size:12px;">รวมค่าซ่อม</td>
+                    <td style="padding:8px 10px;text-align:right;font-size:12px;">฿${Number(data.repairCost).toLocaleString('th-TH')}</td>
+                </tr></tfoot>
+            </table>
+        </div>`;
+    }
+
+    // Fuel summary table
+    let fuelSection = '';
+    if (data.fuels.length > 0) {
+        const sortedFuels = [...data.fuels].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const totalLiters = sortedFuels.reduce((sum, f) => sum + (parseFloat(f.liters) || 0), 0);
+        const fuelRows = sortedFuels.map((f, i) => {
+            const v = vehicles.find(v => v.id === f.vehicleId);
+            const fType = FUEL_TYPES[f.fuelType] || { emoji: '⛽', label: f.fuelType || '-' };
+            const bg = i % 2 === 0 ? '#ffffff' : '#f8fafc';
+            return `<tr style="background:${bg};">
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;white-space:nowrap;">${formatDate(f.date)}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${v ? escapeHTML(v.plate) : '-'}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${fType.emoji} ${fType.label}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${escapeHTML(f.station || '-')}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;">${parseFloat(f.liters || 0).toFixed(2)}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;">฿${parseFloat(f.pricePerLiter || 0).toFixed(2)}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;font-weight:600;">฿${Number(f.totalCost || 0).toLocaleString('th-TH')}</td>
+            </tr>`;
+        }).join('');
+
+        fuelSection = `<div style="margin-bottom:24px;">
+            <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#16a34a;">⛽ รายการเติมน้ำมัน (${data.fuels.length} รายการ)</div>
+            <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;">
+                <thead><tr style="background:#16a34a;color:white;">
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">วันที่</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">ทะเบียน</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">ประเภท</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">ปั๊ม</th>
+                    <th style="padding:8px 10px;text-align:right;font-size:11px;">ลิตร</th>
+                    <th style="padding:8px 10px;text-align:right;font-size:11px;">บาท/ลิตร</th>
+                    <th style="padding:8px 10px;text-align:right;font-size:11px;">ค่าใช้จ่าย</th>
+                </tr></thead>
+                <tbody>${fuelRows}</tbody>
+                <tfoot><tr style="background:#f0fdf4;font-weight:700;">
+                    <td colspan="4" style="padding:8px 10px;font-size:12px;">รวมค่าน้ำมัน</td>
+                    <td style="padding:8px 10px;text-align:right;font-size:12px;">${totalLiters.toFixed(2)} ล.</td>
+                    <td></td>
+                    <td style="padding:8px 10px;text-align:right;font-size:12px;">฿${Number(data.fuelCost).toLocaleString('th-TH')}</td>
+                </tr></tfoot>
+            </table>
+        </div>`;
+    }
+
+    // Charge summary table
+    let chargeSection = '';
+    if (data.charges.length > 0) {
+        const sortedCharges = [...data.charges].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const totalKwh = sortedCharges.reduce((sum, c) => sum + (parseFloat(c.kwh) || 0), 0);
+        const chargeRows = sortedCharges.map((c, i) => {
+            const v = vehicles.find(v => v.id === c.vehicleId);
+            const cType = CHARGE_TYPES[c.chargeType] || { emoji: '⚡', label: c.chargeType || '-' };
+            const bg = i % 2 === 0 ? '#ffffff' : '#f8fafc';
+            return `<tr style="background:${bg};">
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;white-space:nowrap;">${formatDate(c.date)}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${v ? escapeHTML(v.plate) : '-'}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${cType.emoji} ${cType.label}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${escapeHTML(c.station || '-')}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;">${parseFloat(c.kwh || 0).toFixed(1)}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;">฿${parseFloat(c.pricePerKwh || 0).toFixed(2)}</td>
+                <td style="padding:6px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;font-weight:600;">฿${Number(c.totalCost || 0).toLocaleString('th-TH')}</td>
+            </tr>`;
+        }).join('');
+
+        chargeSection = `<div style="margin-bottom:24px;">
+            <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#7c3aed;">⚡ รายการชาร์จ (${data.charges.length} รายการ)</div>
+            <table style="width:100%;border-collapse:collapse;border:1px solid #e2e8f0;">
+                <thead><tr style="background:#7c3aed;color:white;">
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">วันที่</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">ทะเบียน</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">ประเภท</th>
+                    <th style="padding:8px 10px;text-align:left;font-size:11px;">สถานี</th>
+                    <th style="padding:8px 10px;text-align:right;font-size:11px;">kWh</th>
+                    <th style="padding:8px 10px;text-align:right;font-size:11px;">บาท/kWh</th>
+                    <th style="padding:8px 10px;text-align:right;font-size:11px;">ค่าใช้จ่าย</th>
+                </tr></thead>
+                <tbody>${chargeRows}</tbody>
+                <tfoot><tr style="background:#f5f3ff;font-weight:700;">
+                    <td colspan="4" style="padding:8px 10px;font-size:12px;">รวมค่าชาร์จ</td>
+                    <td style="padding:8px 10px;text-align:right;font-size:12px;">${totalKwh.toFixed(1)} kWh</td>
+                    <td></td>
+                    <td style="padding:8px 10px;text-align:right;font-size:12px;">฿${Number(data.chargeCost).toLocaleString('th-TH')}</td>
+                </tr></tfoot>
+            </table>
+        </div>`;
+    }
+
+    // Grand total summary — use TABLE layout (html2pdf can't render flexbox)
+    const grandTotalSection = `<div style="margin-bottom:24px;">
+        <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#1e3a5f;">💰 สรุปค่าใช้จ่ายทั้งหมด</div>
+        <table style="width:100%;border-collapse:collapse;border:1px solid #c7d2fe;">
+            <thead><tr style="background:#1e3a5f;color:white;">
+                <th style="padding:10px 12px;text-align:center;font-size:12px;width:25%;">ค่าซ่อม</th>
+                <th style="padding:10px 12px;text-align:center;font-size:12px;width:25%;">ค่าน้ำมัน</th>
+                <th style="padding:10px 12px;text-align:center;font-size:12px;width:25%;">ค่าชาร์จ</th>
+                <th style="padding:10px 12px;text-align:center;font-size:12px;width:25%;">ค่าใช้จ่ายรวม</th>
+            </tr></thead>
+            <tbody><tr style="background:#f0f9ff;">
+                <td style="padding:14px 12px;text-align:center;font-size:16px;font-weight:800;color:#ea580c;border:1px solid #e2e8f0;">฿${Number(data.repairCost).toLocaleString('th-TH')}</td>
+                <td style="padding:14px 12px;text-align:center;font-size:16px;font-weight:800;color:#16a34a;border:1px solid #e2e8f0;">฿${Number(data.fuelCost).toLocaleString('th-TH')}</td>
+                <td style="padding:14px 12px;text-align:center;font-size:16px;font-weight:800;color:#7c3aed;border:1px solid #e2e8f0;">฿${Number(data.chargeCost).toLocaleString('th-TH')}</td>
+                <td style="padding:14px 12px;text-align:center;font-size:16px;font-weight:800;color:#1e40af;border:1px solid #e2e8f0;background:#eff6ff;">฿${Number(data.totalCost).toLocaleString('th-TH')}</td>
+            </tr></tbody>
+        </table>
+    </div>`;
+
+    // Header stats — use TABLE layout instead of flex
+    const headerStatsHtml = `<table style="width:100%;border-collapse:collapse;margin-top:16px;border-top:1px solid rgba(255,255,255,0.15);">
+        <tr>
+            <td style="padding:12px 8px 0;vertical-align:top;">
+                <div style="font-size:10px;opacity:0.6;">วันที่สร้างรายงาน</div>
+                <div style="font-size:14px;font-weight:600;">${dateStr}</div>
+            </td>
+            <td style="padding:12px 8px 0;vertical-align:top;">
+                <div style="font-size:10px;opacity:0.6;">รายการซ่อม</div>
+                <div style="font-size:14px;font-weight:600;">${data.repairs.length} ครั้ง</div>
+            </td>
+            <td style="padding:12px 8px 0;vertical-align:top;">
+                <div style="font-size:10px;opacity:0.6;">เติมน้ำมัน</div>
+                <div style="font-size:14px;font-weight:600;">${data.fuels.length} ครั้ง</div>
+            </td>
+            <td style="padding:12px 8px 0;vertical-align:top;">
+                <div style="font-size:10px;opacity:0.6;">ชาร์จ</div>
+                <div style="font-size:14px;font-weight:600;">${data.charges.length} ครั้ง</div>
+            </td>
+            <td style="padding:12px 8px 0;vertical-align:top;">
+                <div style="font-size:10px;opacity:0.6;">ค่าใช้จ่ายรวม</div>
+                <div style="font-size:14px;font-weight:600;">฿${Number(data.totalCost).toLocaleString('th-TH')}</div>
+            </td>
+        </tr>
+    </table>`;
+
+    const html = `
+    <div style="font-family:'Noto Sans Thai','Inter',sans-serif;color:#1e293b;padding:0;width:100%;">
+        <div style="background:#0f172a;color:white;padding:28px 32px;border-radius:12px;margin-bottom:24px;">
+            <div style="font-size:24px;font-weight:800;">📊 CarCare Pro — รายงานรายเดือน</div>
+            <div style="font-size:15px;opacity:0.9;margin-top:4px;font-weight:600;">${monthName} ${thaiYear}</div>
+            <div style="font-size:12px;opacity:0.75;margin-top:2px;">${vehicleTitle}</div>
+            ${headerStatsHtml}
+        </div>
+        ${vCards ? `<div style="margin-bottom:24px;"><div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#1e3a5f;">🚗 ข้อมูลรถ</div>${vCards}</div>` : ''}
+        ${grandTotalSection}
+        ${repairSection}
+        ${fuelSection}
+        ${chargeSection}
+        <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;font-size:10px;color:#94a3b8;">
+            สร้างโดย CarCare Pro — ${dateStr}
+        </div>
+    </div>`;
+
+    const container = document.createElement('div');
+    container.innerHTML = html;
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = '794px';
+    document.body.appendChild(container);
+
+    const vehicleLabel = isAll ? 'All' : (() => {
+        const v = vehicles.find(v => v.id === data.vehicleId);
+        return v ? (v.plate || v.brand).replace(/\s/g, '_') : 'Unknown';
+    })();
+
+    html2pdf().set({
+        margin: [10, 10, 10, 10],
+        filename: `CarCarePro_Monthly_${data.year}-${String(data.month + 1).padStart(2, '0')}_${vehicleLabel}_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    }).from(container.firstElementChild).save()
+        .then(() => {
+            document.body.removeChild(container);
+            showToast('สร้างรายงานรายเดือน PDF สำเร็จ');
+        })
+        .catch(err => {
+            document.body.removeChild(container);
+            console.error('Monthly PDF export error:', err);
+            showToast('เกิดข้อผิดพลาดในการสร้างรายงาน', 'error');
+        });
 }
 
 // ==========================================
 // Export
 // ==========================================
-function initExport() {
-    document.getElementById('btnExport').addEventListener('click', exportCSV);
-    document.getElementById('btnExportPDF').addEventListener('click', exportPDF);
-}
+function showExportModal(type, format) {
+    const allVehicles = DB.getVehicles();
+    let allData = [];
+    let titleStr = '';
+    let emoji = '';
+    let color = '';
+    let bgColor = '';
 
-function exportCSV() {
-    const records = DB.getRecords();
-    const vehicles = DB.getVehicles();
+    if (type === 'repair') {
+        allData = DB.getRecords();
+        titleStr = 'ข้อมูลซ่อมบำรุง';
+        emoji = format === 'pdf' ? '📄' : '📊';
+        color = 'var(--accent-blue)';
+        bgColor = 'rgba(59,130,246,0.1)';
+    } else if (type === 'fuel') {
+        allData = DB.getFuelLogs();
+        titleStr = 'ข้อมูลน้ำมัน';
+        emoji = '⛽';
+        color = 'var(--accent-green)';
+        bgColor = 'rgba(34,197,94,0.1)';
+    } else {
+        allData = DB.getChargeLogs();
+        titleStr = 'ข้อมูลชาร์จ EV';
+        emoji = '⚡';
+        color = 'var(--accent-orange)';
+        bgColor = 'rgba(249,115,22,0.1)';
+    }
 
-    if (records.length === 0) {
-        showToast('ไม่มีข้อมูลสำหรับส่งออก', 'info');
+    if (allData.length === 0) {
+        showToast(`ไม่มี${titleStr}สำหรับส่งออก`, 'info');
         return;
     }
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;padding:20px;';
+
+    const vehicleOptions = allVehicles.map(v => `<option value="${v.id}">${v.brand} ${v.model} (${v.plate || '-'})</option>`).join('');
+    
+    const availableMonths = [...new Set(allData.map(d => d.date.substring(0, 7)))].sort().reverse();
+    const monthOptions = availableMonths.map(ym => {
+        const [year, month] = ym.split('-');
+        const monthName = THAI_MONTHS_FULL[parseInt(month) - 1];
+        return `<option value="${ym}">${monthName} ${parseInt(year) + 543}</option>`;
+    }).join('');
+
+    overlay.innerHTML = `
+        <div style="background:var(--bg-secondary);border-radius:16px;padding:24px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                <div style="width:40px;height:40px;border-radius:12px;background:${bgColor};color:${color};display:flex;align-items:center;justify-content:center;font-size:1.2rem;">${emoji}</div>
+                <div>
+                    <h3 style="margin:0 0 4px;font-size:1.1rem;color:var(--text-primary);">ส่งออก${titleStr} (${format.toUpperCase()})</h3>
+                    <p style="margin:0;font-size:0.85rem;color:var(--text-muted);">เลือกเงื่อนไขที่ต้องการ</p>
+                </div>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="display:block;margin-bottom:6px;font-size:0.9rem;color:var(--text-primary);font-weight:600;">รถยนต์</label>
+                <select id="exportVehicle" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);font-family:inherit;">
+                    <option value="all">รถทุกคัน</option>
+                    ${vehicleOptions}
+                </select>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="display:block;margin-bottom:6px;font-size:0.9rem;color:var(--text-primary);font-weight:600;">ช่วงเวลา</label>
+                <select id="exportPeriod" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);font-family:inherit;">
+                    <option value="all">ทั้งหมด</option>
+                    <option value="month">เลือกตามเดือน</option>
+                    <option value="range">เลือกตามช่วงวันที่</option>
+                </select>
+            </div>
+
+            <div id="exportMonthGroup" style="display:none;margin-bottom:16px;">
+                <label style="display:block;margin-bottom:6px;font-size:0.9rem;color:var(--text-primary);font-weight:600;">เดือน</label>
+                <select id="exportMonthValue" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);font-family:inherit;">
+                    ${monthOptions || '<option value="">ไม่มีข้อมูล</option>'}
+                </select>
+            </div>
+
+            <div id="exportRangeGroup" style="display:none;margin-bottom:16px;">
+                <div style="display:flex;gap:12px;">
+                    <div style="flex:1;">
+                        <label style="display:block;margin-bottom:6px;font-size:0.9rem;color:var(--text-primary);font-weight:600;">เริ่มตั้งแต่วันที่</label>
+                        <input type="date" id="exportDateFrom" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);font-family:inherit;" max="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                    <div style="flex:1;">
+                        <label style="display:block;margin-bottom:6px;font-size:0.9rem;color:var(--text-primary);font-weight:600;">ถึงวันที่</label>
+                        <input type="date" id="exportDateTo" style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-primary);color:var(--text-primary);font-family:inherit;" max="${new Date().toISOString().split('T')[0]}">
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:24px;">
+                <button id="exportCancelBtn" style="flex:1;padding:12px;border-radius:10px;border:1px solid var(--border-color);background:transparent;color:var(--text-primary);font-family:inherit;font-weight:600;cursor:pointer;">ยกเลิก</button>
+                <button id="exportConfirmBtn" style="flex:2;padding:12px;border-radius:10px;border:none;background:${color};color:white;font-family:inherit;font-weight:600;cursor:pointer;box-shadow:0 4px 12px ${bgColor};">เริ่มต้นส่งออก</button>
+            </div>
+        </div>`;
+
+    document.body.appendChild(overlay);
+
+    const periodSelect = overlay.querySelector('#exportPeriod');
+    const monthGroup = overlay.querySelector('#exportMonthGroup');
+    const rangeGroup = overlay.querySelector('#exportRangeGroup');
+
+    periodSelect.addEventListener('change', (e) => {
+        monthGroup.style.display = e.target.value === 'month' ? 'block' : 'none';
+        rangeGroup.style.display = e.target.value === 'range' ? 'block' : 'none';
+    });
+
+    overlay.querySelector('#exportCancelBtn').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+
+    overlay.querySelector('#exportConfirmBtn').addEventListener('click', () => {
+        const vehicleId = overlay.querySelector('#exportVehicle').value;
+        const periodType = periodSelect.value;
+        let filteredData = allData;
+        let periodLabel = 'ทั้งหมด';
+        let dateSuffix = ''; 
+
+        if (vehicleId !== 'all') {
+            filteredData = filteredData.filter(d => d.vehicleId === vehicleId);
+        }
+
+        if (periodType === 'month') {
+            const ym = overlay.querySelector('#exportMonthValue').value;
+            if (!ym) { showToast('ไม่พบเดือนที่ต้องการส่งออก', 'error'); return; }
+            filteredData = filteredData.filter(d => d.date.startsWith(ym));
+            
+            const [y, m] = ym.split('-');
+            periodLabel = `เดือน ${THAI_MONTHS_FULL[parseInt(m)-1]} ${parseInt(y)+543}`;
+            dateSuffix = ym;
+        } else if (periodType === 'range') {
+            const dateFrom = overlay.querySelector('#exportDateFrom').value;
+            const dateTo = overlay.querySelector('#exportDateTo').value;
+            if (!dateFrom || !dateTo) { showToast('กรุณาระบุวันที่ให้ครบถ้วน', 'error'); return; }
+            if (dateFrom > dateTo) { showToast('วันที่เริ่มต้นต้องน้อยกว่าหรือเท่ากับวันที่สิ้นสุด', 'error'); return; }
+            
+            filteredData = filteredData.filter(d => d.date >= dateFrom && d.date <= dateTo);
+            periodLabel = `ตั้งแต่ ${formatDate(dateFrom)} ถึง ${formatDate(dateTo)}`;
+            dateSuffix = `${dateFrom}_to_${dateTo}`;
+        } else {
+            dateSuffix = new Date().toISOString().split('T')[0];
+        }
+
+        if (filteredData.length === 0) {
+            showToast('ไม่มีข้อมูลตรงตามเงื่อนไขที่เลือก', 'info');
+            return;
+        }
+
+        overlay.remove();
+
+        const config = { vehicleId, periodLabel, dateSuffix };
+
+        if (type === 'repair') {
+            if (format === 'csv') executeExportRepairCSV(filteredData, config);
+            else executeExportRepairPDF(filteredData, config);
+        } else if (type === 'fuel') {
+            if (format === 'csv') executeExportFuelCSV(filteredData, config);
+            else executeExportFuelPDF(filteredData, config);
+        } else if (type === 'charge') {
+            if (format === 'csv') executeExportChargeCSV(filteredData, config);
+            else executeExportChargePDF(filteredData, config);
+        }
+    });
+
+    periodSelect.dispatchEvent(new Event('change'));
+}
+
+function initExport() {
+    document.getElementById('btnExport').addEventListener('click', () => showExportModal('repair', 'csv'));
+    document.getElementById('btnExportPDF').addEventListener('click', () => showExportModal('repair', 'pdf'));
+}
+
+function executeExportRepairCSV(records, config) {
+    const vehicles = DB.getVehicles();
 
     const headers = ['วันที่', 'รถ', 'ทะเบียน', 'ประเภทซ่อม', 'สถานะ', 'ร้าน/อู่', 'รายละเอียด', 'เลขไมล์', 'ค่าใช้จ่าย(บาท)', 'วันนัดถัดไป', 'หมายเหตุ'];
 
@@ -3157,7 +3695,6 @@ function exportCSV() {
         ];
     });
 
-    // BOM for Excel to recognize UTF-8
     let csvContent = '\uFEFF' + headers.join(',') + '\n';
     rows.forEach(row => {
         csvContent += row.map(cell => {
@@ -3170,69 +3707,18 @@ function exportCSV() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `carcare_export_${new Date().toISOString().split('T')[0]}.csv`;
+    const vName = config.vehicleId === 'all' ? 'All' : (vehicles.find(v => v.id === config.vehicleId)?.plate || 'Unknown').replace(/\s/g, '_');
+    link.download = `CarCarePro_Repair_${vName}_${config.dateSuffix}.csv`;
     link.click();
     URL.revokeObjectURL(url);
 
     showToast('ส่งออกข้อมูลเป็น CSV สำเร็จ');
 }
 
-function exportPDF() {
-    const allRecords = DB.getRecords();
-    const vehicles = DB.getVehicles();
-
-    if (allRecords.length === 0) {
-        showToast('ไม่มีข้อมูลสำหรับส่งออก PDF', 'info');
-        return;
-    }
-
-    const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10001;display:flex;align-items:center;justify-content:center;animation:fadeIn 0.2s ease;';
-
-    const vehicleOptions = vehicles.map(v => {
-        const count = allRecords.filter(r => r.vehicleId === v.id).length;
-        return `<button class="pdf-vehicle-btn" data-id="${v.id}" style="width:100%;padding:12px 16px;margin-bottom:8px;border:1px solid var(--border-color);border-radius:10px;background:var(--bg-primary);color:var(--text-primary);cursor:pointer;text-align:left;font-family:inherit;font-size:0.95rem;transition:all 0.15s ease;display:flex;justify-content:space-between;align-items:center;">
-            <span><strong>${v.brand} ${v.model}</strong> <span style="color:var(--text-muted);font-size:0.85rem;">${v.plate || ''}</span></span>
-            <span style="color:var(--text-muted);font-size:0.8rem;">${count} รายการ</span>
-        </button>`;
-    }).join('');
-
-    overlay.innerHTML = `
-        <div style="background:var(--bg-secondary);border-radius:16px;padding:24px;width:90%;max-width:400px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-            <h3 style="margin:0 0 4px;font-size:1.1rem;color:var(--text-primary);">📄 ส่งออก PDF</h3>
-            <p style="margin:0 0 16px;font-size:0.85rem;color:var(--text-muted);">เลือกรถที่ต้องการออกรายงาน</p>
-            <button class="pdf-vehicle-btn" data-id="all" style="width:100%;padding:12px 16px;margin-bottom:12px;border:2px solid var(--accent-blue);border-radius:10px;background:rgba(59,130,246,0.1);color:var(--accent-blue);cursor:pointer;text-align:center;font-family:inherit;font-size:0.95rem;font-weight:600;transition:all 0.15s ease;">
-                📋 ออกรายงานทุกคัน (${allRecords.length} รายการ)
-            </button>
-            <div style="height:1px;background:var(--border-color);margin-bottom:12px;"></div>
-            ${vehicleOptions}
-            <button id="pdfCancelBtn" style="width:100%;padding:10px;margin-top:4px;border:1px solid var(--border-color);border-radius:10px;background:transparent;color:var(--text-muted);cursor:pointer;font-family:inherit;font-size:0.9rem;">ยกเลิก</button>
-        </div>`;
-
-    document.body.appendChild(overlay);
-    overlay.querySelector('#pdfCancelBtn').addEventListener('click', () => overlay.remove());
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
-
-    overlay.querySelectorAll('.pdf-vehicle-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const selectedId = btn.dataset.id;
-            overlay.remove();
-            generatePDFForVehicle(selectedId);
-        });
-    });
-}
-
-function generatePDFForVehicle(vehicleId) {
-    const allRecords = DB.getRecords();
+function executeExportRepairPDF(records, config) {
     const allVehicles = DB.getVehicles();
-    const isAll = vehicleId === 'all';
-    const vehicles = isAll ? allVehicles : allVehicles.filter(v => v.id === vehicleId);
-    const records = isAll ? allRecords : allRecords.filter(r => r.vehicleId === vehicleId);
-
-    if (records.length === 0) {
-        showToast('ไม่มีข้อมูลซ่อมสำหรับรถคันนี้', 'info');
-        return;
-    }
+    const isAll = config.vehicleId === 'all';
+    const vehicles = isAll ? allVehicles : allVehicles.filter(v => v.id === config.vehicleId);
 
     showToast('กำลังสร้าง PDF...', 'info');
 
@@ -3244,6 +3730,7 @@ function generatePDFForVehicle(vehicleId) {
 
     const vehicleCards = vehicles.map(v => {
         const vRecords = records.filter(r => r.vehicleId === v.id);
+        if (vRecords.length === 0) return '';
         const vCost = vRecords.reduce((sum, r) => sum + (r.cost || 0), 0);
         return `<div style="background:#f0f9ff;border-radius:8px;padding:12px 16px;margin-bottom:8px;border-left:4px solid #3b82f6;">
             <div style="font-weight:700;font-size:14px;color:#1e3a5f;">${v.brand} ${v.model} ${v.year ? '(' + v.year + ')' : ''}</div>
@@ -3275,8 +3762,8 @@ function generatePDFForVehicle(vehicleId) {
             <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;white-space:nowrap;">${formatDate(r.date)}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${v ? v.plate : '-'}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${typeInfo.emoji} ${typeInfo.label}</td>
-            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${r.shop || '-'}</td>
-            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${r.description || '-'}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${escapeHTML(r.shop || '-')}</td>
+            <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;">${escapeHTML(r.description || '-')}</td>
             <td style="padding:8px 10px;border-bottom:1px solid #e2e8f0;font-size:11px;text-align:right;font-weight:600;">฿${Number(r.cost || 0).toLocaleString('th-TH')}</td>
         </tr>`;
     }).join('');
@@ -3286,6 +3773,7 @@ function generatePDFForVehicle(vehicleId) {
         <div style="background:linear-gradient(135deg,#0f1729,#1e3a5f);color:white;padding:28px 32px;border-radius:12px;margin-bottom:24px;">
             <div style="font-size:24px;font-weight:800;">🚗 CarCare Pro</div>
             <div style="font-size:13px;opacity:0.85;margin-top:4px;">${titleText}</div>
+            <div style="font-size:13px;opacity:0.85;margin-top:2px;">ช่วงเวลา: ${config.periodLabel}</div>
             <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.15);display:flex;gap:32px;">
                 <div><div style="font-size:10px;opacity:0.6;">วันที่สร้างรายงาน</div><div style="font-size:14px;font-weight:600;">${dateStr}</div></div>
                 <div><div style="font-size:10px;opacity:0.6;">จำนวนรถ</div><div style="font-size:14px;font-weight:600;">${vehicles.length} คัน</div></div>
@@ -3295,7 +3783,7 @@ function generatePDFForVehicle(vehicleId) {
         </div>
         <div style="margin-bottom:24px;">
             <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#0f1729;">📋 ข้อมูลรถ</div>
-            ${vehicleCards}
+            ${vehicleCards || '<div style="font-size:12px;color:#64748b;">ไม่มีข้อมูลรถ</div>'}
         </div>
         <div style="margin-bottom:24px;">
             <div style="font-size:16px;font-weight:700;margin-bottom:12px;color:#0f1729;">📊 สรุปตามประเภทการซ่อม</div>
@@ -3340,9 +3828,11 @@ function generatePDFForVehicle(vehicleId) {
     container.style.width = '794px';
     document.body.appendChild(container);
 
+    const vName = isAll ? 'All' : (vehicles[0].plate || vehicles[0].brand).replace(/\s/g, '_');
+
     const opt = {
         margin: [10, 10, 10, 10],
-        filename: `CarCarePro_${isAll ? 'All' : (vehicles[0].plate || vehicles[0].brand).replace(/\s/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`,
+        filename: `CarCarePro_Repair_${vName}_${config.dateSuffix}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2, useCORS: true, letterRendering: true },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
