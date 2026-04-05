@@ -1,9 +1,9 @@
 <div align="center">
   <img src="carcarepro/logo.png" alt="CarCare Pro Logo" style="border-radius: 24px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); margin-bottom: 20px;">
-  <h1>🚗 CarCare Pro v1.0.2</h1>
+  <h1>🚗 CarCare Pro v1.0.3</h1>
   <p><strong>แอปพลิเคชันจัดการทุกเรื่องรถคู่ใจ ให้กลายเป็นเรื่องง่ายและสนุกกว่าเดิม!</strong></p>
   <p>
-    <img src="https://img.shields.io/badge/version-1.0.2-blue.svg?style=flat-square" alt="Version">
+    <img src="https://img.shields.io/badge/version-1.0.3-blue.svg?style=flat-square" alt="Version">
     <img src="https://img.shields.io/badge/platform-Web%20%7C%20PWA-green.svg?style=flat-square" alt="Platform">
     <img src="https://img.shields.io/badge/built%20with-Firebase-orange.svg?style=flat-square" alt="Backend">
   </p>
@@ -86,6 +86,10 @@
 
 ## 📋 Changelog
 
+### v1.0.3 (5 เม.ย. 2569)
+- ✅ ปรับปรุงระบบ **ส่งออกรายงาน** (CSV และ PDF)
+- ✅ เพิ่มช่องให้สามารถเลือกส่งออกตามช่วงเวลาที่กำหนดได้ (แบบระบุเดือน หรือกำหนดวันที่เอง)
+
 ### v1.0.2 (25 มี.ค. 2569)
 - ✅ เพิ่มระบบ **สำรอง/กู้คืนข้อมูล** (Export/Import JSON)
 - ✅ รองรับโหมด Merge (รวม) และ Overwrite (เขียนทับ)
@@ -122,4 +126,4 @@
 </div>
 
 ---
-*© 2026 CarCare Pro v1.0.2. All rights reserved.*
+*© 2026 CarCare Pro v1.0.3. All rights reserved.*
